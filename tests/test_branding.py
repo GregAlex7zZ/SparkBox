@@ -72,7 +72,8 @@ class BrandingTests(unittest.TestCase):
             box.accept()
         QTimer.singleShot(0, inspect_and_close)
         MainWindow._about(host)                                  # only uses self as dialog parent
-        self.assertEqual(seen["title"], "About SparkBox")
+        if sys.platform != "darwin":                             # macOS: Qt ignores message box titles (Apple HIG)
+            self.assertEqual(seen["title"], "About SparkBox")
         for part in ("Alessandro Gregucci", "Claude", "Codex", "gregorithm", "LICENSES"):
             self.assertIn(part, seen["text"])
         self.assertGreaterEqual(min(seen["pixmap"].width(), seen["pixmap"].height()), 128)
