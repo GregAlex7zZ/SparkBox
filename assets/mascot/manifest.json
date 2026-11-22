@@ -1,0 +1,922 @@
+{
+  "version": 2,
+  "world": {
+    "width": 412,
+    "height": 342,
+    "anchor": {
+      "x": 272,
+      "y": 325
+    },
+    "character_height": 247
+  },
+  "neutral": "neutral",
+  "frames": {
+    "neutral": {
+      "file": "frames/neutral.png",
+      "x": 194,
+      "y": 83
+    },
+    "battery_01": {
+      "file": "frames/battery_01.png",
+      "x": 151,
+      "y": 92
+    },
+    "battery_02": {
+      "file": "frames/battery_02.png",
+      "x": 160,
+      "y": 99
+    },
+    "battery_03": {
+      "file": "frames/battery_03.png",
+      "x": 159,
+      "y": 108
+    },
+    "battery_04": {
+      "file": "frames/battery_04.png",
+      "x": 156,
+      "y": 118
+    },
+    "battery_05": {
+      "file": "frames/battery_05.png",
+      "x": 160,
+      "y": 112
+    },
+    "battery_06": {
+      "file": "frames/battery_06.png",
+      "x": 160,
+      "y": 97
+    },
+    "battery_07": {
+      "file": "frames/battery_07.png",
+      "x": 160,
+      "y": 87
+    },
+    "battery_08": {
+      "file": "frames/battery_08.png",
+      "x": 162,
+      "y": 114
+    },
+    "battery_09": {
+      "file": "frames/battery_09.png",
+      "x": 152,
+      "y": 109
+    },
+    "battery_10": {
+      "file": "frames/battery_10.png",
+      "x": 147,
+      "y": 104
+    },
+    "battery_11": {
+      "file": "frames/battery_11.png",
+      "x": 148,
+      "y": 109
+    },
+    "battery_12": {
+      "file": "frames/battery_12.png",
+      "x": 147,
+      "y": 94
+    },
+    "battery_13": {
+      "file": "frames/battery_13.png",
+      "x": 146,
+      "y": 82
+    },
+    "battery_14": {
+      "file": "frames/battery_14.png",
+      "x": 146,
+      "y": 81
+    },
+    "battery_15": {
+      "file": "frames/battery_15.png",
+      "x": 146,
+      "y": 81
+    },
+    "explosion_09": {
+      "file": "frames/explosion_09.png",
+      "x": 151,
+      "y": 87
+    },
+    "explosion_10": {
+      "file": "frames/explosion_10.png",
+      "x": 151,
+      "y": 87
+    },
+    "explosion_11": {
+      "file": "frames/explosion_11.png",
+      "x": 135,
+      "y": 87
+    },
+    "explosion_12": {
+      "file": "frames/explosion_12.png",
+      "x": 145,
+      "y": 87
+    },
+    "explosion_13": {
+      "file": "frames/explosion_13.png",
+      "x": 102,
+      "y": 38
+    },
+    "explosion_14": {
+      "file": "frames/explosion_14.png",
+      "x": 114,
+      "y": 38
+    },
+    "explosion_15": {
+      "file": "frames/explosion_15.png",
+      "x": 126,
+      "y": 56
+    },
+    "explosion_16": {
+      "file": "frames/explosion_16.png",
+      "x": 130,
+      "y": 80
+    },
+    "explosion_17": {
+      "file": "frames/explosion_17.png",
+      "x": 170,
+      "y": 83
+    },
+    "explosion_18": {
+      "file": "frames/explosion_18.png",
+      "x": 169,
+      "y": 83
+    },
+    "explosion_19": {
+      "file": "frames/explosion_19.png",
+      "x": 142,
+      "y": 82
+    },
+    "explosion_20": {
+      "file": "frames/explosion_20.png",
+      "x": 158,
+      "y": 83
+    },
+    "explosion_21": {
+      "file": "frames/explosion_21.png",
+      "x": 167,
+      "y": 80
+    },
+    "explosion_22": {
+      "file": "frames/explosion_22.png",
+      "x": 167,
+      "y": 79
+    },
+    "explosion_23": {
+      "file": "frames/explosion_23.png",
+      "x": 194,
+      "y": 80
+    },
+    "thumbs_up_01": {
+      "file": "frames/thumbs_up_01.png",
+      "x": 194,
+      "y": 84
+    },
+    "thumbs_up_02": {
+      "file": "frames/thumbs_up_02.png",
+      "x": 195,
+      "y": 83
+    },
+    "thumbs_up_03": {
+      "file": "frames/thumbs_up_03.png",
+      "x": 192,
+      "y": 84
+    },
+    "thumbs_up_04": {
+      "file": "frames/thumbs_up_04.png",
+      "x": 187,
+      "y": 85
+    },
+    "thumbs_up_05": {
+      "file": "frames/thumbs_up_05.png",
+      "x": 186,
+      "y": 85
+    },
+    "thumbs_up_06": {
+      "file": "frames/thumbs_up_06.png",
+      "x": 183,
+      "y": 85
+    },
+    "thumbs_up_07": {
+      "file": "frames/thumbs_up_07.png",
+      "x": 185,
+      "y": 85
+    },
+    "thumbs_up_08": {
+      "file": "frames/thumbs_up_08.png",
+      "x": 190,
+      "y": 84
+    },
+    "thumbs_up_09": {
+      "file": "frames/thumbs_up_09.png",
+      "x": 194,
+      "y": 84
+    },
+    "thumbs_up_10": {
+      "file": "frames/thumbs_up_10.png",
+      "x": 194,
+      "y": 84
+    },
+    "desk_01": {
+      "file": "frames/desk_01.png",
+      "x": 2,
+      "y": 78
+    },
+    "desk_02": {
+      "file": "frames/desk_02.png",
+      "x": 4,
+      "y": 78
+    },
+    "desk_03": {
+      "file": "frames/desk_03.png",
+      "x": 5,
+      "y": 91
+    },
+    "desk_04": {
+      "file": "frames/desk_04.png",
+      "x": 2,
+      "y": 89
+    },
+    "desk_05": {
+      "file": "frames/desk_05.png",
+      "x": 0,
+      "y": 91
+    },
+    "desk_07": {
+      "file": "frames/desk_07.png",
+      "x": 1,
+      "y": 91
+    },
+    "desk_08": {
+      "file": "frames/desk_08.png",
+      "x": 1,
+      "y": 90
+    },
+    "desk_09": {
+      "file": "frames/desk_09.png",
+      "x": 1,
+      "y": 90
+    },
+    "desk_10": {
+      "file": "frames/desk_10.png",
+      "x": 0,
+      "y": 89
+    },
+    "desk_11": {
+      "file": "frames/desk_11.png",
+      "x": 0,
+      "y": 89
+    },
+    "desk_12": {
+      "file": "frames/desk_12.png",
+      "x": 1,
+      "y": 88
+    },
+    "desk_13": {
+      "file": "frames/desk_13.png",
+      "x": 1,
+      "y": 89
+    },
+    "desk_14": {
+      "file": "frames/desk_14.png",
+      "x": 0,
+      "y": 89
+    },
+    "desk_15": {
+      "file": "frames/desk_15.png",
+      "x": 0,
+      "y": 90
+    },
+    "desk_16": {
+      "file": "frames/desk_16.png",
+      "x": 1,
+      "y": 89
+    },
+    "desk_furniture_0": {
+      "file": "frames/desk_furniture_0.png",
+      "x": 2,
+      "y": 83
+    },
+    "desk_furniture_1": {
+      "file": "frames/desk_furniture_1.png",
+      "x": 2,
+      "y": 83
+    },
+    "desk_furniture_2": {
+      "file": "frames/desk_furniture_2.png",
+      "x": 2,
+      "y": 83
+    },
+    "restroom_00@154": {
+      "file": "frames/restroom_00.png",
+      "x": 40,
+      "y": 0
+    },
+    "restroom_01@154": {
+      "file": "frames/restroom_01.png",
+      "x": 70,
+      "y": 0
+    },
+    "restroom_02@154": {
+      "file": "frames/restroom_02.png",
+      "x": 52,
+      "y": 0
+    },
+    "restroom_03@154": {
+      "file": "frames/restroom_03.png",
+      "x": 63,
+      "y": 0
+    },
+    "restroom_04@154": {
+      "file": "frames/restroom_04.png",
+      "x": 90,
+      "y": 0
+    },
+    "restroom_05@154": {
+      "file": "frames/restroom_05.png",
+      "x": 121,
+      "y": 0
+    },
+    "restroom_06@154": {
+      "file": "frames/restroom_06.png",
+      "x": 134,
+      "y": 0
+    },
+    "restroom_07@154": {
+      "file": "frames/restroom_07.png",
+      "x": 143,
+      "y": 0
+    },
+    "restroom_08@154": {
+      "file": "frames/restroom_08.png",
+      "x": 200,
+      "y": 0
+    },
+    "restroom_09@154": {
+      "file": "frames/restroom_09.png",
+      "x": 206,
+      "y": 0
+    },
+    "restroom_10@154": {
+      "file": "frames/restroom_10.png",
+      "x": 207,
+      "y": 0
+    },
+    "restroom_11@154": {
+      "file": "frames/restroom_11.png",
+      "x": 207,
+      "y": 0
+    },
+    "restroom_12@154": {
+      "file": "frames/restroom_12.png",
+      "x": 207,
+      "y": 0
+    },
+    "restroom_13@154": {
+      "file": "frames/restroom_13.png",
+      "x": 207,
+      "y": 0
+    },
+    "restroom_14@154": {
+      "file": "frames/restroom_14.png",
+      "x": 207,
+      "y": 0
+    },
+    "restroom_21@154": {
+      "file": "frames/restroom_21.png",
+      "x": 207,
+      "y": 0
+    },
+    "restroom_22@154": {
+      "file": "frames/restroom_22.png",
+      "x": 156,
+      "y": 0
+    },
+    "restroom_23@154": {
+      "file": "frames/restroom_23.png",
+      "x": 90,
+      "y": 0
+    },
+    "restroom_24@154": {
+      "file": "frames/restroom_24.png",
+      "x": 77,
+      "y": 0
+    },
+    "restroom_25@154": {
+      "file": "frames/restroom_25.png",
+      "x": 54,
+      "y": 0
+    },
+    "restroom_26@154": {
+      "file": "frames/restroom_26.png",
+      "x": 56,
+      "y": 0
+    },
+    "restroom_27@154": {
+      "file": "frames/restroom_27.png",
+      "x": 57,
+      "y": 0
+    },
+    "restroom_28@154": {
+      "file": "frames/restroom_28.png",
+      "x": 45,
+      "y": 0
+    },
+    "restroom_29@154": {
+      "file": "frames/restroom_29.png",
+      "x": 40,
+      "y": 0
+    },
+    "restroom_door_0@26": {
+      "file": "frames/restroom_door_0.png",
+      "x": 168,
+      "y": 3
+    },
+    "restroom_door_1@51": {
+      "file": "frames/restroom_door_1.png",
+      "x": 143,
+      "y": 0
+    },
+    "restroom_door_2@77": {
+      "file": "frames/restroom_door_2.png",
+      "x": 117,
+      "y": 0
+    },
+    "restroom_door_3@103": {
+      "file": "frames/restroom_door_3.png",
+      "x": 91,
+      "y": 0
+    },
+    "restroom_door_4@128": {
+      "file": "frames/restroom_door_4.png",
+      "x": 66,
+      "y": 0
+    },
+    "restroom_door_exit_0@26": {
+      "file": "frames/restroom_door_exit_0.png",
+      "x": 168,
+      "y": 3
+    },
+    "restroom_door_exit_1@51": {
+      "file": "frames/restroom_door_exit_1.png",
+      "x": 143,
+      "y": 0
+    },
+    "restroom_door_exit_2@77": {
+      "file": "frames/restroom_door_exit_2.png",
+      "x": 117,
+      "y": 0
+    },
+    "restroom_door_exit_3@103": {
+      "file": "frames/restroom_door_exit_3.png",
+      "x": 91,
+      "y": 0
+    },
+    "restroom_door_exit_4@128": {
+      "file": "frames/restroom_door_exit_4.png",
+      "x": 66,
+      "y": 0
+    }
+  },
+  "clips": {
+    "thumbs_up": {
+      "ms": [
+        650,
+        100,
+        100,
+        100,
+        100,
+        250,
+        200,
+        650,
+        100,
+        100,
+        100,
+        300
+      ],
+      "frames": [
+        "neutral",
+        "thumbs_up_01",
+        "thumbs_up_02",
+        "thumbs_up_03",
+        "thumbs_up_04",
+        "thumbs_up_05",
+        "thumbs_up_06",
+        "thumbs_up_07",
+        "thumbs_up_08",
+        "thumbs_up_09",
+        "thumbs_up_10",
+        "neutral"
+      ]
+    },
+    "lift": {
+      "ms": [
+        650,
+        250,
+        100,
+        100,
+        150,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        150,
+        350,
+        900
+      ],
+      "frames": [
+        "neutral",
+        "battery_01",
+        "battery_02",
+        "battery_03",
+        "battery_04",
+        "battery_05",
+        "battery_06",
+        "battery_07",
+        "battery_08",
+        "battery_09",
+        "battery_10",
+        "battery_11",
+        "battery_12",
+        "battery_13",
+        "battery_14",
+        "battery_15"
+      ]
+    },
+    "lower": {
+      "ms": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        350
+      ],
+      "frames": [
+        "battery_14",
+        "battery_13",
+        "battery_12",
+        "battery_11",
+        "battery_10",
+        "battery_09",
+        "battery_08",
+        "battery_07",
+        "battery_06",
+        "battery_05",
+        "battery_04",
+        "battery_03",
+        "battery_02",
+        "battery_01",
+        "neutral"
+      ]
+    },
+    "explosion": {
+      "ms": [
+        650,
+        250,
+        100,
+        100,
+        150,
+        100,
+        100,
+        100,
+        100,
+        150,
+        200,
+        150,
+        50,
+        100,
+        200,
+        300,
+        250,
+        200,
+        150,
+        150,
+        150,
+        150,
+        150,
+        250,
+        700
+      ],
+      "frames": [
+        "neutral",
+        "battery_01",
+        "battery_02",
+        "battery_03",
+        "battery_04",
+        "battery_05",
+        "battery_06",
+        "battery_07",
+        "battery_08",
+        "explosion_09",
+        "explosion_10",
+        "explosion_11",
+        "explosion_12",
+        "explosion_13",
+        "explosion_14",
+        "explosion_15",
+        "explosion_16",
+        "explosion_17",
+        "explosion_18",
+        "explosion_19",
+        "explosion_20",
+        "explosion_21",
+        "explosion_22",
+        "explosion_23",
+        "neutral"
+      ]
+    },
+    "desk_loop": {
+      "ms": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        100,
+        650,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        100,
+        650,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        100,
+        650,
+        150,
+        150,
+        150,
+        250,
+        500,
+        250,
+        150,
+        150,
+        150,
+        150,
+        600
+      ],
+      "frames": [
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_08",
+        "desk_05",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_08",
+        "desk_05",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_05",
+        "desk_07",
+        "desk_08",
+        "desk_05",
+        "desk_09",
+        "desk_10",
+        "desk_11",
+        "desk_12",
+        "desk_13",
+        "desk_12",
+        "desk_11",
+        "desk_14",
+        "desk_15",
+        "desk_16",
+        "desk_05"
+      ]
+    },
+    "desk_entry": {
+      "ms": [
+        650,
+        80,
+        80,
+        80,
+        150,
+        150,
+        150,
+        150,
+        200
+      ],
+      "frames": [
+        "neutral",
+        "desk_furniture_0",
+        "desk_furniture_1",
+        "desk_furniture_2",
+        "desk_01",
+        "desk_02",
+        "desk_03",
+        "desk_04",
+        "desk_05"
+      ]
+    },
+    "desk_exit": {
+      "ms": [
+        150,
+        150,
+        150,
+        150,
+        150,
+        80,
+        80,
+        80,
+        300
+      ],
+      "frames": [
+        "desk_05",
+        "desk_04",
+        "desk_03",
+        "desk_02",
+        "desk_01",
+        "desk_furniture_2",
+        "desk_furniture_1",
+        "desk_furniture_0",
+        "neutral"
+      ]
+    },
+    "restroom_entry": {
+      "ms": [
+        350,
+        70,
+        70,
+        70,
+        70,
+        70,
+        600,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        200,
+        200,
+        150,
+        150,
+        150,
+        150,
+        300,
+        1400
+      ],
+      "frames": [
+        "neutral",
+        "restroom_door_0@26",
+        "restroom_door_1@51",
+        "restroom_door_2@77",
+        "restroom_door_3@103",
+        "restroom_door_4@128",
+        "restroom_00@154",
+        "restroom_01@154",
+        "restroom_02@154",
+        "restroom_03@154",
+        "restroom_04@154",
+        "restroom_05@154",
+        "restroom_06@154",
+        "restroom_07@154",
+        "restroom_08@154",
+        "restroom_09@154",
+        "restroom_10@154",
+        "restroom_11@154",
+        "restroom_12@154",
+        "restroom_13@154",
+        "restroom_14@154",
+        "restroom_14@154"
+      ]
+    },
+    "restroom_exit": {
+      "ms": [
+        450,
+        150,
+        150,
+        150,
+        150,
+        180,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        450,
+        70,
+        70,
+        70,
+        70,
+        70,
+        300
+      ],
+      "frames": [
+        "restroom_14@154",
+        "restroom_13@154",
+        "restroom_12@154",
+        "restroom_11@154",
+        "restroom_10@154",
+        "restroom_21@154",
+        "restroom_22@154",
+        "restroom_23@154",
+        "restroom_24@154",
+        "restroom_25@154",
+        "restroom_26@154",
+        "restroom_27@154",
+        "restroom_28@154",
+        "restroom_29@154",
+        "restroom_door_exit_4@128",
+        "restroom_door_exit_3@103",
+        "restroom_door_exit_2@77",
+        "restroom_door_exit_1@51",
+        "restroom_door_exit_0@26",
+        "neutral"
+      ]
+    }
+  }
+}

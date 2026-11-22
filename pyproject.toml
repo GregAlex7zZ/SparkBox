@@ -1,0 +1,16 @@
+# SparkBox is an application, not an installable package: this file holds tool settings only.
+# Runtime dependencies are listed in requirements.txt (plus the gregorithm library).
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["assets", ".cache", "dist"]
+
+[tool.ruff.lint]
+select = ["E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F403", "F405", "F401", "F811"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

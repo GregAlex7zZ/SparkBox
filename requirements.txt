@@ -1,0 +1,6 @@
+# SparkBox runtime dependencies. Install gregorithm first, from its repository:
+#   python -m pip install <path-or-URL-of-gregorithm>
+PySide6>=6.6
+pyqtgraph>=0.13,<0.14
+numpy>=2.0
+pyarrow>=20

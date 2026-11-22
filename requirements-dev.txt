@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=8
+ruff>=0.16
+matplotlib>=3.10      # tools/build_help_formulas.py and demo mode only

@@ -1,0 +1,264 @@
+{
+  "lucide_version_pin": "not fetched: app/icons_builtin.py draws the shapes; run tools/fetch_lucide_icons.py with a pinned lucide-static release to use the official files",
+  "grid": "24x24, stroke 2, round caps/joins, currentColor",
+  "status": "in use",
+  "icons": [
+    {
+      "id": "nav.data",
+      "source": "lucide",
+      "name": "database",
+      "role": "Left nav: Data"
+    },
+    {
+      "id": "nav.elaboration",
+      "source": "lucide",
+      "name": "sliders-horizontal",
+      "role": "Left nav: Data Elaboration"
+    },
+    {
+      "id": "nav.explorer",
+      "source": "lucide",
+      "name": "chart-line",
+      "role": "Left nav: Data Explorer"
+    },
+    {
+      "id": "nav.capacity",
+      "source": "custom",
+      "name": "capacity",
+      "role": "Left nav: Capacity"
+    },
+    {
+      "id": "nav.dcir",
+      "source": "custom",
+      "name": "dcir",
+      "role": "Left nav: DCIR"
+    },
+    {
+      "id": "nav.dqdv",
+      "source": "custom",
+      "name": "dqdv",
+      "role": "Left nav: dQ/dV"
+    },
+    {
+      "id": "nav.comparison",
+      "source": "lucide",
+      "name": "arrow-left-right",
+      "role": "Left nav: Comparison"
+    },
+    {
+      "id": "shell.sidebar_collapse",
+      "source": "lucide",
+      "name": "panel-left-close",
+      "role": "Collapse left sidebar"
+    },
+    {
+      "id": "shell.sidebar_expand",
+      "source": "lucide",
+      "name": "panel-left-open",
+      "role": "Expand left sidebar"
+    },
+    {
+      "id": "shell.advanced_open",
+      "source": "lucide",
+      "name": "panel-right-open",
+      "role": "Advanced settings dock: open"
+    },
+    {
+      "id": "shell.advanced_close",
+      "source": "lucide",
+      "name": "panel-right-close",
+      "role": "Advanced settings dock: close"
+    },
+    {
+      "id": "shell.tab_close",
+      "source": "lucide",
+      "name": "x",
+      "role": "Dataset tab close; dialogs; chips"
+    },
+    {
+      "id": "shell.tabs_scroll_left",
+      "source": "lucide",
+      "name": "chevron-left",
+      "role": "Tab strip scroll left"
+    },
+    {
+      "id": "shell.tabs_scroll_right",
+      "source": "lucide",
+      "name": "chevron-right",
+      "role": "Tab strip scroll right"
+    },
+    {
+      "id": "action.open_file",
+      "source": "lucide",
+      "name": "folder-open",
+      "role": "Open File button / menu"
+    },
+    {
+      "id": "action.drop_file",
+      "source": "lucide",
+      "name": "file-up",
+      "role": "Empty-state drop zone"
+    },
+    {
+      "id": "action.info",
+      "source": "lucide",
+      "name": "info",
+      "role": "Parameter (i) popover trigger"
+    },
+    {
+      "id": "action.help",
+      "source": "lucide",
+      "name": "circle-help",
+      "role": "Help entry points"
+    },
+    {
+      "id": "action.copy",
+      "source": "lucide",
+      "name": "copy",
+      "role": "Copy table selection / values"
+    },
+    {
+      "id": "action.export",
+      "source": "lucide",
+      "name": "download",
+      "role": "Export table / figure"
+    },
+    {
+      "id": "action.search",
+      "source": "lucide",
+      "name": "search",
+      "role": "Row / Time jump"
+    },
+    {
+      "id": "action.cycle_filter",
+      "source": "lucide",
+      "name": "list-filter",
+      "role": "Cycle Filter",
+      "fallback": [
+        "funnel"
+      ]
+    },
+    {
+      "id": "action.visibility_on",
+      "source": "lucide",
+      "name": "eye",
+      "role": "Show curve / dataset"
+    },
+    {
+      "id": "action.visibility_off",
+      "source": "lucide",
+      "name": "eye-off",
+      "role": "Hide curve / dataset"
+    },
+    {
+      "id": "action.colour",
+      "source": "lucide",
+      "name": "palette",
+      "role": "Colour swatch affordance (optional)"
+    },
+    {
+      "id": "plot.box_zoom",
+      "source": "lucide",
+      "name": "square-dashed-mouse-pointer",
+      "role": "Box Zoom tool",
+      "fallback": [
+        "scan",
+        "zoom-in"
+      ]
+    },
+    {
+      "id": "plot.pan",
+      "source": "lucide",
+      "name": "hand",
+      "role": "Pan tool",
+      "fallback": [
+        "move"
+      ]
+    },
+    {
+      "id": "plot.reset_view",
+      "source": "lucide",
+      "name": "maximize",
+      "role": "Reset View",
+      "fallback": [
+        "scan",
+        "rotate-ccw"
+      ]
+    },
+    {
+      "id": "plot.render_all_points",
+      "source": "custom",
+      "name": "render-all-points",
+      "role": "Render All Points (static Agg image)"
+    },
+    {
+      "id": "status.not_processed",
+      "source": "lucide",
+      "name": "circle-dashed",
+      "role": "Status: not processed"
+    },
+    {
+      "id": "status.running",
+      "source": "lucide",
+      "name": "loader-circle",
+      "role": "Status: running (animated by app)",
+      "fallback": [
+        "loader"
+      ]
+    },
+    {
+      "id": "status.current",
+      "source": "lucide",
+      "name": "circle-check",
+      "role": "Status: current"
+    },
+    {
+      "id": "status.stale",
+      "source": "lucide",
+      "name": "refresh-cw",
+      "role": "Status: outdated / stale"
+    },
+    {
+      "id": "status.warning",
+      "source": "lucide",
+      "name": "triangle-alert",
+      "role": "Status: warning"
+    },
+    {
+      "id": "status.failed",
+      "source": "lucide",
+      "name": "circle-x",
+      "role": "Status: failed"
+    },
+    {
+      "id": "status.cancelled",
+      "source": "lucide",
+      "name": "ban",
+      "role": "Status: cancelled"
+    },
+    {
+      "id": "settings.theme_system",
+      "source": "lucide",
+      "name": "monitor",
+      "role": "Appearance: System"
+    },
+    {
+      "id": "settings.theme_light",
+      "source": "lucide",
+      "name": "sun",
+      "role": "Appearance: Light"
+    },
+    {
+      "id": "settings.theme_dark",
+      "source": "lucide",
+      "name": "moon",
+      "role": "Appearance: Dark"
+    },
+    {
+      "id": "band.open",
+      "source": "lucide",
+      "name": "plus",
+      "role": "Tab band: open another file"
+    }
+  ]
+}

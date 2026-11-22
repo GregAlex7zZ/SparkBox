@@ -1,0 +1,29 @@
+# Python, build and tool caches
+__pycache__/
+*.py[cod]
+/.venv/
+/venv/
+/build/
+/dist/
+/.cache/
+/packaging/version_info.txt
+*.spec.bak
+/.pytest_cache/
+/.ruff_cache/
+.ipynb_checkpoints/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local data, result stores and private material: never commit
+*-private/
+/results/
+/exports/
+*.csv
+*.parquet
+!/tests/fixtures/*.csv
+*.mpr
+*.ndax
