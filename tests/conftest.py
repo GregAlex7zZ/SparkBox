@@ -14,6 +14,7 @@ import os
 import tempfile
 
 import PySide6.QtCore as QtCore
+import pytest
 
 _SETTINGS_DIR = tempfile.TemporaryDirectory(prefix="gregorithm-test-settings-", ignore_cleanup_errors=True)
 _RealSettings = QtCore.QSettings
@@ -34,3 +35,32 @@ class _IsolatedSettings(_RealSettings):
 
 
 QtCore.QSettings = _IsolatedSettings
+
+
+_exit_status = 0
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Remember the final exit status for ``pytest_unconfigure``."""
+    global _exit_status
+    _exit_status = int(exitstatus)
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_unconfigure(config):
+    """End a Qt test process without interpreter finalization.
+
+    Tests close windows and charts but rarely delete them; at interpreter exit Python and Qt then destroy the remaining
+    widgets, pyqtgraph scenes and the QApplication in no fixed order, which sometimes crashes the process with a
+    segmentation fault (exit -11) after every test passed (seen on Linux with Python 3.12). Once pytest has written its
+    report nothing is left to do, so when Qt widgets were loaded the process exits right here with pytest's status.
+    Limits: atexit handlers do not run; the temporary settings folder is removed explicitly.
+    """
+    import sys
+
+    if "PySide6.QtWidgets" not in sys.modules:
+        return
+    _SETTINGS_DIR.cleanup()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(_exit_status)
