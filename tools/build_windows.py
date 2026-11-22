@@ -80,6 +80,8 @@ def logo(target: Path) -> None:
 # runs the application.
 BUNDLED = ("PySide6_Essentials", "shiboken6", "pyqtgraph", "numpy", "pyarrow", "scipy", "gregorithm", "pyinstaller")
 LICENSE_WORDS = ("license", "licence", "copying", "notice", "copyright", "authors")
+# Repository license texts used when a Qt for Python wheel ships none (Linux and macOS wheels).
+QT_LICENSE_FALLBACK = {name: ("LGPL-3.0.txt", "GPL-3.0.txt") for name in ("PySide6_Essentials", "shiboken6")}
 
 
 def third_party_licenses(target: Path) -> list[str]:
@@ -104,9 +106,15 @@ def third_party_licenses(target: Path) -> list[str]:
             raise SystemExit(f"Bundled package not installed: {name}") from None
         files = [f for f in dist.files or () if any(w in f.name.lower() for w in LICENSE_WORDS)
                  and ".dist-info" in str(f)]
-        if not files:
-            raise SystemExit(f"No license file found for {name}")
         folder = target / f"{dist.metadata['Name']}-{dist.version}"
+        if not files and name in QT_LICENSE_FALLBACK:
+            # The Linux and macOS wheels of Qt for Python ship no license file (the Windows ones do); Qt is bundled
+            # under the LGPL-3.0, whose texts (LGPL-3.0 builds on GPL-3.0) are kept in the repository.
+            folder.mkdir(parents=True, exist_ok=True)
+            for text in QT_LICENSE_FALLBACK[name]:
+                shutil.copyfile(ROOT / "LICENSES" / text, folder / text)
+        elif not files:
+            raise SystemExit(f"No license file found for {name}")
         for f in files:
             inside = Path(*[part for part in Path(str(f)).parts if not part.endswith(".dist-info")])
             destination = folder / inside
