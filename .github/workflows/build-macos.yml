@@ -1,0 +1,63 @@
+name: Build macOS app
+
+# Builds SparkBox.app in a .dmg for Apple silicon (arm64) and Intel (x86_64) Macs and uploads it as a workflow
+# artifact. Runs by hand (Actions › Build macOS app › Run workflow) and when the macOS packaging changes.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - packaging/**
+      - tools/build_macos.py
+      - tools/build_windows.py
+      - requirements-build.txt
+      - .github/workflows/build-macos.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest       # Apple silicon
+            arch: arm64
+          - runner: macos-15-intel     # Intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - name: Install gregorithm
+        shell: bash
+        run: |
+          if [ -z "${{ vars.GREGORITHM_REQUIREMENT }}" ]; then
+            echo "Set the repository variable GREGORITHM_REQUIREMENT (see CONTRIBUTING.md)." >&2; exit 1
+          fi
+          python -m pip install "${{ vars.GREGORITHM_REQUIREMENT }}"
+      - run: python -m pip install -r requirements-build.txt
+      - name: Build
+        run: python tools/build_macos.py
+      - name: Smoke test (the bundled app starts and keeps running)
+        shell: bash
+        run: |
+          app=.cache/pyinstaller-dist-macos/SparkBox.app/Contents/MacOS/SparkBox
+          QT_QPA_PLATFORM=offscreen "$app" > smoke.log 2>&1 &
+          pid=$!
+          sleep 25
+          if ! kill -0 "$pid" 2>/dev/null; then
+            wait "$pid"; code=$?
+            echo "SparkBox exited early with code $code" >&2; cat smoke.log >&2; exit 1
+          fi
+          kill "$pid"; cat smoke.log
+      - uses: actions/upload-artifact@v5
+        with:
+          name: SparkBox-macos-${{ matrix.arch }}
+          path: dist/*.dmg
+          if-no-files-found: error
+          retention-days: 30

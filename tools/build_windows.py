@@ -90,7 +90,13 @@ def third_party_licenses(target: Path) -> list[str]:
     from importlib import metadata
     target.mkdir(parents=True, exist_ok=True)
     lines = [f"Python {sys.version.split()[0]} - PSF License (Python-LICENSE.txt)"]
-    shutil.copyfile(Path(sys.base_prefix) / "LICENSE.txt", target / "Python-LICENSE.txt")
+    base = Path(sys.base_prefix)
+    major_minor = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    candidates = (base / "LICENSE.txt", base / "lib" / major_minor / "LICENSE.txt")   # Windows, macOS / Linux
+    python_license = next((c for c in candidates if c.is_file()), None)
+    if python_license is None:
+        raise SystemExit("Python license file (LICENSE.txt) not found")
+    shutil.copyfile(python_license, target / "Python-LICENSE.txt")
     for name in BUNDLED:
         try:
             dist = metadata.distribution(name)
