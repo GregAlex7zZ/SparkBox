@@ -53,12 +53,15 @@ def pytest_unconfigure(config):
     Tests close windows and charts but rarely delete them; at interpreter exit Python and Qt then destroy the remaining
     widgets, pyqtgraph scenes and the QApplication in no fixed order, which sometimes crashes the process with a
     segmentation fault (exit -11) after every test passed (seen on Linux with Python 3.12). Once pytest has written its
-    report nothing is left to do, so when Qt widgets were loaded the process exits right here with pytest's status.
+    report nothing is left to do, so when Qt widgets were loaded the process exits right here with pytest's status
+    (POSIX only).
     Limits: atexit handlers do not run; the temporary settings folder is removed explicitly.
     """
     import sys
 
-    if "PySide6.QtWidgets" not in sys.modules:
+    # Not on Windows: there os._exit still runs the DLL detach of Qt with the QApplication alive and crashes
+    # (0xC0000005), while the normal interpreter exit is reliable.
+    if sys.platform == "win32" or "PySide6.QtWidgets" not in sys.modules:
         return
     _SETTINGS_DIR.cleanup()
     sys.stdout.flush()
