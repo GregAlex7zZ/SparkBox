@@ -20,7 +20,9 @@ class FileDialogFolderTests(unittest.TestCase):
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
+        # resolve(): on Windows the temp folder can be a short 8.3 name (C:/Users/RUNNER~1/...) while the app stores
+        # the resolved long name of remembered folders.
+        self.root = Path(self.temp.name).resolve()
         settings = QSettings("gregorithm", "gui")
         settings.remove(fd.IMPORT_KEY)
         settings.remove(fd.EXPORT_KEY)

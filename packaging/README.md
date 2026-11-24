@@ -46,3 +46,23 @@ first start of a version (extraction included) and about 4 s afterwards.
   state the exact PySide6 version (from `INVENTORY.txt`) and keep the matching SparkBox source tagged in the
   repository; `THIRD_PARTY_NOTICES.md` links the Qt for Python and Qt source downloads.
 - Upload the executable as a GitHub Release asset; never commit it to the repository.
+
+# macOS application
+
+`python tools/build_macos.py` (macOS, in an environment with `requirements-build.txt` and gregorithm installed)
+produces **`dist/SparkBox-<version>-macos-<arch>.dmg`**: a disk image with `SparkBox.app` and a link to
+Applications. No Python is needed on the user's Mac. The GitHub workflow **Build macOS app** (`build-macos.yml`) runs
+the same script for Apple silicon (`arm64`) and Intel (`x86_64`), starts the bundled app once as a smoke test, and
+attaches each `.dmg` to the run as an artifact (Actions › the run › Artifacts).
+
+- **Install**: open the `.dmg` and drag SparkBox onto Applications.
+- **First start**: the app is signed ad hoc, not with an Apple Developer ID, and not notarized, so macOS blocks it
+  the first time. Right-click SparkBox in Applications › Open › Open, or System Settings › Privacy & Security ›
+  Open Anyway. If macOS reports the app as "damaged", the download quarantine is the cause:
+  `xattr -dr com.apple.quarantine /Applications/SparkBox.app`. A Developer ID signature plus notarization removes
+  this step and needs a paid Apple Developer account.
+- **Architectures**: NumPy, SciPy and PyArrow have no universal2 wheels, so there is one build per architecture;
+  pick `arm64` for M-series Macs, `x86_64` for Intel Macs. Minimum macOS: 13.
+- There is no splash launcher as on Windows: the bundle is a normal PyInstaller onedir app, so it starts without
+  an extraction step. Licenses are copied into `SparkBox.app/Contents/Resources/LICENSES/third-party/` exactly as
+  in the Windows build.
