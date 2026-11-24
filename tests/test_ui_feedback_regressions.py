@@ -244,6 +244,7 @@ class Window(Base):
             cls.w.start_import(name, "auto")
             wait_for(lambda: cls.w._active_job is None)
         for ds in cls.w.state.datasets:
+            cls.w.select_dataset(ds.id)                  # only the selected dataset calculates (app.standby)
             cls.w.elab.process(ds.id)
             wait_for(lambda d=ds: d.elab.has_result)
 

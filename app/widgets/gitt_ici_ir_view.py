@@ -12,10 +12,10 @@ of the width, whatever the window size), each zoomed on its transition and drawi
   * the computed ΔV as a vertical segment from V_ref to V_meas.
 Below each chart: rows, times, voltages, currents, ΔV, ΔI and R of that side, and how the sample was chosen.
 
-Below the charts, two cards side by side as in OCV Analysis: the sample times of THIS impulse (pre-pulse and
-post-pulse independent; empty = the global time of that side) with Apply to this impulse / Use global times, and the
-global sample times of all impulses with Apply to all impulses; then the acceptance row (Return to Pending, Reject,
-Accept all valid, Accept).
+Below the charts, one sample-times card as in DCIR: the pre-pulse and post-pulse fields show the times the open
+impulse uses (its own ones, or the global ones); Apply keeps them for this impulse only, Apply to All makes them the
+global times of every impulse, Use global times (shown when the impulse has its own times or clicked samples) removes
+them. Then the acceptance row (Return to Pending, Reject, Accept all valid, Accept).
 
 Manual selection reuses the gregorithm rule that a click keeps the exact row identity: clicking a real sample
 of the measured segment emits ``sampleChosen(event_id, side, row)``. Nothing is computed here: values come from
@@ -35,6 +35,7 @@ from ..gitt_ici_ir import SIDE_LABELS, SIDE_SYMBOLS, SIDES, drop_cells, ir_rows,
 from ..gitt_ici_review import ACCEPTED, INVALID, MODIFIED, PENDING, REJECTED
 from .chart import _font
 from .gitt_ici_chart import PALETTE, SHADE
+from .controls import ElidedLabel, FlowLayout, WrapLabel, group
 from .gitt_ici_setup import (LIST_WIDTH, STATUS_KIND, FillPane, button, fill_scroll, info, labelled, list_panel,
                              list_row, make_list, muted, select_next, status_color, wrapped_tip)
 
@@ -53,6 +54,11 @@ COLORS = {"context": PALETTE["context"], "candidate": PALETTE["data"], "referenc
           "measured": PALETTE["measured"], "delta": PALETTE["delta"], "target": PALETTE["target"]}
 
 
+PLOT_MIN_H = 150               # px; the charts grow with the window, the page scrolls only below this
+PAIR_CELLS = 430               # px of one chart: from here the short values sit two per line
+WIDE_CELLS = 620               # px of one chart: from here the long sample values also sit side by side
+
+
 class IrDropChart(QWidget):
     """V-vs-time zoom on one side of one impulse; clicking a sample of the measured segment emits its row. Its
     minimum width is small on purpose, so the two charts of the view always fit side by side."""
@@ -69,7 +75,7 @@ class IrDropChart(QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(4)
         bar = QHBoxLayout()
-        self.title = QLabel(f"{SIDE_LABELS[side]} IR drop ({SIDE_SYMBOLS[side]})")
+        self.title = ElidedLabel(f"{SIDE_LABELS[side]} IR drop ({SIDE_SYMBOLS[side]})")   # "…" + tooltip if narrow
         self.title.setStyleSheet("font-weight: 500;")
         bar.addWidget(self.title)
         bar.addStretch(1)
@@ -79,7 +85,7 @@ class IrDropChart(QWidget):
         lay.addLayout(bar)
         self.plot = pg.PlotWidget()
         self.plot.setBackground(CHART["bg"])
-        self.plot.setMinimumHeight(240)
+        self.plot.setMinimumHeight(PLOT_MIN_H)
         self.plot.setMinimumWidth(160)
         self.pi = self.plot.getPlotItem()
         self.pi.setMenuEnabled(False)
@@ -99,35 +105,61 @@ class IrDropChart(QWidget):
         sl.setContentsMargins(6, 6, 6, 6)
         sl.addWidget(self.plot)
         lay.addWidget(surface, 1)
-        self.message = QLabel()
-        self.message.setWordWrap(True)
+        self.message = WrapLabel()                    # wrapped texts keep all their lines when the view is narrow
         self.message.setProperty("muted", True)
         lay.addWidget(self.message)
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(2)
+        self.message.hide()                           # takes no room until there is something to say
+        self.grid = QGridLayout()
+        self.grid.setHorizontalSpacing(12)
+        self.grid.setVerticalSpacing(1)
         self.cells: list[tuple[QLabel, QLabel]] = []
         for i in range(8):
-            key, value = QLabel(), QLabel()
+            key, value = WrapLabel(), WrapLabel()
             key.setProperty("muted", True)
-            key.setWordWrap(True)
             value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-            value.setWordWrap(True)
-            grid.addWidget(key, i, 0, Qt.AlignmentFlag.AlignTop)
-            grid.addWidget(value, i, 1)
             self.cells.append((key, value))
-        grid.setColumnStretch(1, 1)
-        lay.addLayout(grid)
+        self.grid.setColumnStretch(1, 1)
+        self.grid.setColumnStretch(3, 1)
+        self._cell_mode = -1
+        self._place_cells(1)
+        lay.addLayout(self.grid)
         self._range: Optional[tuple] = None
         self.marks: dict[str, int] = {}             # 'reference'/'measured' -> source row drawn (for tests)
         self.editable = True
         self.reset.clicked.connect(self.reset_view)
 
+    def _place_cells(self, mode: int) -> None:
+        """Place the value cells compactly so the whole area fits on one screen. ``mode`` 0 (very narrow chart): one
+        value per line; 1: the short values (ΔV, currents, ΔI, R) two per line; 2 (wide): the two samples side by
+        side as well. The selection rule and the reason always take the full width. Does nothing when the
+        arrangement is already the requested one."""
+        if mode == self._cell_mode:
+            return
+        self._cell_mode = mode
+        if mode == 0:
+            places = [(i, 0, 3) for i in range(len(self.cells))]
+        else:
+            places = [(0, 0, 1), (0, 2, 1)] if mode == 2 else [(0, 0, 3), (1, 0, 3)]
+            places += [(2, 0, 1), (3, 0, 1), (2, 2, 1), (3, 2, 1), (6, 0, 3), (7, 0, 3)]
+        for (key, value), (row, column, span) in zip(self.cells, places):
+            self.grid.addWidget(key, row, column, Qt.AlignmentFlag.AlignTop)
+            self.grid.addWidget(value, row, column + 1, 1, span, Qt.AlignmentFlag.AlignTop)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802  (Qt override)
+        """Rearrange the value cells for the new width."""
+        super().resizeEvent(event)
+        self._place_cells(2 if self.width() >= WIDE_CELLS else 1 if self.width() >= PAIR_CELLS else 0)
+
+    def _say(self, text: str) -> None:
+        """Explanation under the chart; hidden when empty so it takes no room."""
+        self.message.setText(text)
+        self.message.setVisible(bool(text))
+
     def clear(self, text: str) -> None:
         """Empty chart with an explanation."""
         self.pi.clear()
         self._range, self.marks = None, {}
-        self.message.setText(text)
+        self._say(text)
         self._fill_cells([])
 
     def show_drop(self, drop, reference_segment, measured_segment, editable: bool = True) -> None:
@@ -140,7 +172,7 @@ class IrDropChart(QWidget):
         self._fill_cells(drop_cells(drop))
         if drop.reference is None:
             self._range = None
-            self.message.setText("No reference sample: nothing to draw.")
+            self._say("No reference sample: nothing to draw.")
             return
         origin = drop.reference.time_s
         times = tuple(reference_segment.time_s) + tuple(measured_segment.time_s)
@@ -192,7 +224,7 @@ class IrDropChart(QWidget):
                                anchor=(0, 0.5))
             text.setPos(meas.relative_time_s, (ref.voltage_v + meas.voltage_v) / 2)
             self.pi.addItem(text)
-        self.message.setText("" if meas is not None else "No measured sample: no IR drop on this side.")
+        self._say("" if meas is not None else "No measured sample: no IR drop on this side.")
         self._view_y = [v for _r, t, v in context + candidates if lo - 1e-9 <= t <= hi + 1e-9]
         self.reset_view()
 
@@ -258,6 +290,7 @@ class IrDropView(QWidget):
         body.setObjectName("IrBody")
         bl = QVBoxLayout(body)
         bl.setContentsMargins(8, 0, 4, 0)
+        bl.setSpacing(5)
         head = QHBoxLayout()
         self.title = QLabel("Select an impulse in the pulse list.")
         self.title.setStyleSheet("font-weight: 500;")
@@ -290,62 +323,43 @@ class IrDropView(QWidget):
         lay.addWidget(split)
         self._event = ""
         self._drops = None
+        self._globals: tuple = (None, None)       # applied global (pre-pulse, post-pulse) sample times
+        self._editable = True
         self._list_key = None
         self._loading = False
         self.list.currentItemChanged.connect(self._list_changed)
 
     def _strip(self) -> QWidget:
-        """Controls under the charts, compact so they never widen the area: two cards side by side (sample times of
-        this impulse, of all impulses; labels above their fields, buttons below), the usage note, then the
-        acceptance row."""
+        """Controls under the charts, compact so they never widen the area: ONE sample-times card (as in DCIR: the
+        fields show the times the open impulse uses; Apply keeps them for this impulse, Apply to All makes them the
+        times of every impulse), the usage note, then the acceptance row."""
         holder = QWidget()
         col = QVBoxLayout(holder)
         col.setContentsMargins(0, 0, 0, 0)
-        col.setSpacing(8)
-        cards = QHBoxLayout()
-        cards.setSpacing(10)
-        self.local_pre, self.local_post = QLineEdit(), QLineEdit()
+        col.setSpacing(5)
         self.pre_time, self.post_time = QLineEdit(), QLineEdit()
-        self.post_time.setPlaceholderText("= pre-pulse")
-        for edit, what in ((self.local_pre, "Pre-pulse sample time of this impulse"),
-                           (self.local_post, "Post-pulse sample time of this impulse"),
-                           (self.pre_time, "Pre-pulse IR sample time"), (self.post_time, "Post-pulse IR sample time")):
-            edit.setFixedWidth(90)
+        for edit, what in ((self.pre_time, "Pre-pulse IR sample time"), (self.post_time, "Post-pulse IR sample time")):
+            edit.setFixedWidth(112)                  # "= pre-pulse" placeholder fits whole
             edit.setAccessibleName(f"{what} [s]")
         self.local_apply = button("Apply", "ghost")
         self.local_apply.setToolTip("Use these times for this impulse only; an empty field keeps the global time of "
                                     "that side.")
+        self.apply_times = button("Apply to All", "ghost")
+        self.apply_times.setToolTip("Make these the sample times of every impulse; times and samples chosen for "
+                                    "single impulses are kept (Use global times removes them).")
         self.local_reset = button("Use global times", "ghost")
         self.local_reset.setToolTip("Drop the times and the samples chosen for this impulse and use the global "
                                     "sample times again.")
-        self.apply_times = button("Apply to all impulses", "ghost")
-        self.apply_times.setToolTip("Apply these sample times to every impulse; times and samples chosen for single "
-                                    "impulses are kept.")
-        for title, key, pre, post, buttons in (
-                ("this impulse", "ir_local", self.local_pre, self.local_post, (self.local_apply, self.local_reset)),
-                ("all impulses", "ir_times", self.pre_time, self.post_time, (self.apply_times,))):
-            frame = QFrame()
-            frame.setProperty("panel", True)
-            card = QVBoxLayout(frame)
-            card.setContentsMargins(12, 8, 12, 10)
-            card.setSpacing(6)
-            card.addWidget(labelled(f"Sample times · {title}", self.theme, key, bold=True))
-            fields = QGridLayout()
-            fields.setHorizontalSpacing(12)
-            fields.setVerticalSpacing(2)
-            for c, (text, edit) in enumerate((("Pre-pulse [s]", pre), ("Post-pulse [s]", post))):
-                fields.addWidget(muted(text), 0, c)
-                fields.addWidget(edit, 1, c)
-            fields.setColumnStretch(2, 1)
-            card.addLayout(fields)
-            line = QHBoxLayout()
-            for b in buttons:
-                line.addWidget(b)
-            line.addStretch(1)
-            card.addStretch(1)
-            card.addLayout(line)
-            cards.addWidget(frame, 1)
-        col.addLayout(cards)
+        frame = QFrame()
+        frame.setProperty("panel", True)
+        card = FlowLayout(frame, h_spacing=14, v_spacing=6)       # one line; wraps in a narrow window
+        card.setContentsMargins(12, 6, 12, 6)
+        self.times_scope = muted("· all impulses")     # whose times the fields show: this impulse or all impulses
+        card.addWidget(group(labelled("Sample times", self.theme, "ir_times", bold=True), self.times_scope))
+        for text, edit in (("Pre-pulse [s]", self.pre_time), ("Post-pulse [s]", self.post_time)):
+            card.addWidget(group(muted(text), edit))
+        card.addWidget(group(self.local_apply, self.apply_times, self.local_reset, spacing=8))
+        col.addWidget(frame)
         self.usage = muted()
         self.usage.setWordWrap(True)
         col.addWidget(self.usage)
@@ -363,8 +377,8 @@ class IrDropView(QWidget):
             row.addWidget(b)
         col.addLayout(row)
         self.local_apply.clicked.connect(self._apply_local)
-        self.local_pre.returnPressed.connect(self._apply_local)
-        self.local_post.returnPressed.connect(self._apply_local)
+        self.pre_time.returnPressed.connect(self._apply_local)
+        self.post_time.returnPressed.connect(self._apply_local)
         self.local_reset.clicked.connect(
             lambda: self._event and self.localTimesChosen.emit(self._event, {"pre_pulse": None, "post_pulse": None}))
         self.apply_times.clicked.connect(self._apply_times)
@@ -381,13 +395,19 @@ class IrDropView(QWidget):
             self.acceptRequested.emit([self._event])
             select_next(self.list)
 
+    def _global_time(self, side: str) -> Optional[float]:
+        """Global sample time of ``side`` as it is applied (an empty post-pulse time means the pre-pulse one)."""
+        pre, post = self._globals
+        return pre if side == "pre_pulse" or post is None else post
+
     def _apply_local(self) -> None:
-        """Emit the local times that differ from what this impulse uses now. An empty field means the global time
-        of that side, except on a side whose sample was clicked: there it keeps the clicked sample."""
+        """Emit the local times that differ from what this impulse uses now. An empty field, or the global time
+        itself, means the global time of that side, except on a side whose sample was clicked: an empty field there
+        keeps the clicked sample."""
         if not self._event or self._drops is None:
             return
         changes = {}
-        for side, edit in (("pre_pulse", self.local_pre), ("post_pulse", self.local_post)):
+        for side, edit in (("pre_pulse", self.pre_time), ("post_pulse", self.post_time)):
             value, err = parse_optional_positive(edit.text())
             if err:
                 self.note.setText("Enter sample times greater than 0 s, or leave a field empty for the global time.")
@@ -396,7 +416,9 @@ class IrDropView(QWidget):
             current = drop.target_time_s if drop.local_time else None
             if value is None and drop.manual:
                 continue
-            if value != current or drop.manual:
+            if value is not None and value == self._global_time(side) and not drop.local_time and not drop.manual:
+                value = None                         # the global time typed back: nothing of its own
+            if value != current or (drop.manual and value is not None):
                 changes[side] = value
         if changes:
             self.localTimesChosen.emit(self._event, changes)
@@ -416,13 +438,38 @@ class IrDropView(QWidget):
 
     # --- data ------------------------------------------------------------------------------------------------------
     def set_times(self, pre_s: float, post_s, editable: bool) -> None:
-        """Show the applied global sample times (not while the operator is typing)."""
-        if not self.pre_time.hasFocus():
-            self.pre_time.setText(f"{pre_s:g}")
-        if not self.post_time.hasFocus():
-            self.post_time.setText("" if post_s is None else f"{post_s:g}")
-        for w in (self.pre_time, self.post_time, self.apply_times):
-            w.setEnabled(editable)
+        """Remember the applied global sample times and show the times of the open impulse (not while the operator
+        is typing). Called after ``set_data``."""
+        self._globals = (pre_s, post_s)
+        self._editable = editable
+        self._fill_times()
+
+    def _fill_times(self) -> None:
+        """Fill the two fields with what the open impulse uses: its own time, the clicked sample (empty field,
+        'row N' placeholder) or the global time; the scope label says whose times they are."""
+        item, editable = self._drops, self._editable
+        own = item is not None and any(d.manual or d.local_time for d in (item.pre_pulse, item.post_pulse))
+        self.times_scope.setText("· this impulse" if own else "· all impulses")
+        pre_g, post_g = self._globals
+        for side, edit in (("pre_pulse", self.pre_time), ("post_pulse", self.post_time)):
+            drop = getattr(item, side) if item is not None else None
+            if drop is not None and drop.manual:
+                text = ""
+                edit.setPlaceholderText(f"row {drop.measured.source_row}" if drop.measured is not None else "clicked")
+            else:
+                edit.setPlaceholderText("= pre-pulse" if side == "post_pulse" else "")
+                if drop is not None and drop.local_time:
+                    text = f"{drop.target_time_s:g}"
+                else:
+                    value = pre_g if side == "pre_pulse" else post_g
+                    text = "" if value is None else f"{value:g}"
+            if not edit.hasFocus():
+                edit.setText(text)
+            edit.setEnabled(editable)
+        self.apply_times.setEnabled(editable)
+        self.local_apply.setEnabled(editable and item is not None)
+        self.local_reset.setEnabled(editable and own)
+        self.local_reset.setVisible(own)
 
     def set_data(self, events, drops: dict, event_id: str, trace, usage: str, editable: bool,
                  states: Optional[dict] = None) -> None:
@@ -453,21 +500,13 @@ class IrDropView(QWidget):
                                "Recognise impulses first (Apply or Calculate all impulses).")
             for chart in self.charts.values():
                 chart.clear("")
-            for w in (self.local_pre, self.local_post, self.local_apply, self.local_reset):
-                w.setEnabled(False)
+            self._editable = editable
+            self._fill_times()
             return
         self.title.setText(f"Impulse #{number} · cycle {event.cycle} · half-cycle {event.half_cycle} · "
                            f"{'charge' if event.polarity > 0 else 'discharge'}")
-        for side, edit in (("pre_pulse", self.local_pre), ("post_pulse", self.local_post)):
-            drop = getattr(item, side)
-            edit.setPlaceholderText(f"row {drop.measured.source_row}" if drop.manual and drop.measured is not None
-                                    else "clicked" if drop.manual else f"global {drop.target_time_s:g}")
-            if not edit.hasFocus():
-                edit.setText(f"{drop.target_time_s:g}" if drop.local_time and not drop.manual else "")
-            edit.setEnabled(editable)
-        self.local_apply.setEnabled(editable)
-        self.local_reset.setEnabled(editable and any(d.manual or d.local_time
-                                                     for d in (item.pre_pulse, item.post_pulse)))
+        self._editable = editable
+        self._fill_times()
         for side, chart in self.charts.items():
             drop = getattr(item, side)
             if trace is None or trace.event_id != event_id:

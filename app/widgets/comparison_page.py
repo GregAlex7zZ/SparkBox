@@ -4,7 +4,7 @@ Points for the Data Explorer family. Datasets are chosen in the Comparison Setti
 from __future__ import annotations
 import numpy as np
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtWidgets import (QButtonGroup, QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit,
+from PySide6.QtWidgets import (QButtonGroup, QFrame, QHBoxLayout, QLabel, QLineEdit,
                                QMessageBox, QPushButton, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 from ..file_dialogs import save_export
 from ..capacity import CAP_COLUMNS, CAP_BY_KEY, cap_label, hidden_note, missing_in_all
@@ -14,7 +14,8 @@ from ..dqdv import PHASE_CHOICES, PLOT_CHOICES, PHASES, dqdv_unit
 from ..explorer import COLUMNS, Viewport, axis_label, format_coverage
 from ..icons import make_icon
 from ..theme import ThemeManager, set_prop
-from .controls import SegmentedControl
+from .combos import FitComboBox
+from .controls import FlowLayout, SegmentedControl, group
 from .multi_chart import LegendEntry, MultiChart, Trace
 
 
@@ -48,16 +49,15 @@ class ComparisonPage(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 14, 18, 12)
         root.setSpacing(10)
-        h = QHBoxLayout()
-        h.setSpacing(12)
-        h.addWidget(_lab("Comparison", size=16, weight=500))
+        head = QWidget()
+        h = FlowLayout(head, h_spacing=12, v_spacing=6, last_right=True)   # wraps instead of cutting the summary
         self.meta = _lab(muted=True, size=12)
+        h.addWidget(_lab("Comparison", size=16, weight=500))
         h.addWidget(self.meta)
-        h.addStretch(1)
         self.fam = SegmentedControl(list(FAMILIES), small=False, aria="What to compare")
         self.fam.valueChanged.connect(self.ctl.set_family)
         h.addWidget(self.fam)
-        root.addLayout(h)
+        root.addWidget(head)
         self.body = QStackedWidget()
         self.body.addWidget(self._chart_view())       # 0
         self.body.addWidget(self._empty())            # 1
@@ -74,13 +74,11 @@ class ComparisonPage(QWidget):
         v = QVBoxLayout(w)
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(8)
-        h = QHBoxLayout()
-        h.setSpacing(12)
+        bar = QWidget()
+        h = FlowLayout(bar, h_spacing=12, v_spacing=6, last_right=True)   # wraps instead of cutting the names
         self.x_lab, self.y_lab = _lab("X", muted=True, size=12, weight=500), _lab("Y", muted=True, size=12, weight=500)
-        self.x_cb, self.y_cb = QComboBox(), QComboBox()
+        self.x_cb, self.y_cb = FitComboBox(min_width=150), FitComboBox(min_width=150)   # fit the chosen name
         for cb, axis in ((self.x_cb, "x"), (self.y_cb, "y")):
-            cb.setMinimumWidth(170)
-            cb.setMaximumWidth(240)
             cb.setAccessibleName(f"{axis.upper()} axis")
             cb.activated.connect(lambda i, a=axis, c=cb: self._set_axis(a, c.itemData(i)))
         self.ph_lab, self.pl_lab = _lab("Phase", muted=True, size=12, weight=500), _lab("Plot", muted=True, size=12, weight=500)
@@ -98,10 +96,9 @@ class ComparisonPage(QWidget):
         self.cyc.returnPressed.connect(lambda: self.ctl.edit(lambda cs: cs.view.apply_cycles()))
         self.cyc_err = QLabel()
         self.cyc_err.setProperty("hintErr", True)
-        for x in (self.x_lab, self.x_cb, self.y_lab, self.y_cb, self.ph_lab, self.phase, self.pl_lab, self.plot,
-                  _lab("Cycles", muted=True, size=12, weight=500), self.cyc, self.cyc_err):
-            h.addWidget(x)
-        h.addStretch(1)
+        for pair in ((self.x_lab, self.x_cb), (self.y_lab, self.y_cb), (self.ph_lab, self.phase),
+                     (self.pl_lab, self.plot), (_lab("Cycles", muted=True, size=12, weight=500), self.cyc, self.cyc_err)):
+            h.addWidget(group(*pair, spacing=8))
         tools = QFrame()
         tools.setObjectName("Segmented")
         tl = QHBoxLayout(tools)
@@ -125,7 +122,7 @@ class ComparisonPage(QWidget):
         self.t_reset.clicked.connect(lambda: self.ctl.edit(lambda cs: setattr(cs.view, "viewport", Viewport())))
         self.t_save.clicked.connect(self._save_image)
         h.addWidget(tools)
-        v.addLayout(h)
+        v.addWidget(bar)
         self.chart = MultiChart()
         self.chart.rangeChanged.connect(self._range)
         v.addWidget(self.chart, 1)
@@ -193,12 +190,10 @@ class ComparisonPage(QWidget):
         self.body.setCurrentIndex(0)
         u = self.ctl.app_units
         exp, cap, dq = fam == EXPLORER, fam == CAPACITY, fam == DQDV
-        for wd in (self.x_lab, self.x_cb):
-            wd.setVisible(exp)
-        for wd in (self.y_lab, self.y_cb):
-            wd.setVisible(exp or cap)
-        for wd in (self.ph_lab, self.phase, self.pl_lab, self.plot):
-            wd.setVisible(dq)
+        self.x_lab.parentWidget().setVisible(exp)                # each label shares a toolbar group with its control
+        self.y_lab.parentWidget().setVisible(exp or cap)
+        for wd in (self.ph_lab, self.pl_lab):
+            wd.parentWidget().setVisible(dq)
         missing = self._missing_bases() if cap else set()
         cap_keys = [k for k in CAPACITY_KEYS if CAP_BY_KEY[k].basis not in missing]
         if cap and v.y not in cap_keys:

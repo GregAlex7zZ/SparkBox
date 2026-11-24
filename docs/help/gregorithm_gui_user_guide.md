@@ -27,7 +27,9 @@ The default display units are hours, milliamperes, volts, milliampere-hours, mil
 
 The left sidebar selects Data, Data Elaboration, Data Explorer, Capacity, DCIR, GITT / ICI, dQ/dV or Comparison. Sections become available when their required input exists. An unavailable section is a dependency message, not evidence that the file is unusable.
 
-Dataset tabs run across the top in one horizontally scrolling row. Click a tab to make that dataset active. Long names are shortened visually; hover to read the full name. Close a tab with its internal × button. Each dataset keeps its section and local settings during the session. Comparison is opened from the sidebar and has no dataset tab.
+Dataset tabs run across the top in one horizontally scrolling row. Click a tab to make that dataset active. A tab is as wide as its file name; only very long names are shortened, and you can hover to read the full name. Close a tab with its internal × button. Each dataset keeps its section and local settings during the session.
+
+Only the active dataset works. The other open datasets are on standby: their files and results stay open, but a calculation started on one of them pauses when you select another tab and resumes when you select it again, so one dataset never slows down the one you are working on. The Comparison section lets every dataset run. Going back to a dataset, or to a section you have not opened for it yet, can therefore take a moment to load. Comparison is opened from the sidebar and has no dataset tab.
 
 The compact bottom sidebar control collapses or expands navigation. Use **Advanced Settings** at the right of the dataset tabs to open the current section's settings panel. The **+** after the last tab opens another file. Expand a panel group using its chevron and scroll vertically to reach additional fields.
 
@@ -385,14 +387,28 @@ The pulse list shows every impulse with its pre-pulse and post-pulse IR drop, Δ
 
 Each chart is zoomed on its transition and shows the real samples. The square is the reference and the diamond the measured sample used by gregorithm. The dashed line marks the reference, the shaded band the switching interval up to the first sample after the switch, the dotted line the sample time T, and the vertical segment the computed ΔV. Use the mouse wheel and drag to zoom and pan; **Reset view** returns to the transition. Below each chart: rows, times and voltages of the two samples, ΔV, both currents, ΔI, R = |ΔV/ΔI| and how the sample was chosen. When R cannot be measured, the reason is shown and no value is invented.
 
-**Sample times · all impulses** sets the pre-pulse and post-pulse times of every impulse (**Apply to all**; the same settings as Setup → Advanced settings). **Sample time, this impulse** sets the time of one side of the selected impulse only, with the same rule. Click a blue sample to use exactly that row; **Use global time** goes back to the global time. The pre-pulse sample is also the sample of the selected-sample IR corrections: the Delacourt fixed offset, and GITT Δ when its correction is *Selected sample under current*. Only those results of that impulse are recalculated. A post-pulse sample changes no D.
+**Sample times** works as the measurement times of DCIR: its Pre-pulse and Post-pulse fields show the times the selected impulse uses, and the label next to the title says whose they are (*all impulses*, or *this impulse* when it has its own). **Apply** keeps the typed times for this impulse only (an empty field, or the global time, means the global time of that side); **Apply to All** makes them the times of every impulse (the same settings as Setup → Advanced settings), keeping the times chosen for single impulses. Click a blue sample to use exactly that row; **Use global times**, shown when the impulse has its own times or samples, goes back to the global times. The pre-pulse sample is also the sample of the selected-sample IR corrections: the Delacourt fixed offset, and GITT Δ when its correction is *Selected sample under current*. Only those results of that impulse are recalculated. A post-pulse sample changes no D.
 
 ### 9.3 OCV
 
 The list shows every rest period with its sampled and extrapolated OCV and its state: **Pending**, **Accepted**, **Modified** (accepted, then changed) or **Invalid** (a value it needs is missing). Select a rest to plot V against the time from the last sample under current. The diamond is the sampled OCV.
 
-- **Sampled OCV** is the last real sample of the rest. Click another sample to use exactly that row; **Use last sample** restores the rule. Only the results using that rest's sampled OCV are recalculated.
-- **Extrapolate OCV** fits V = α + β·ln(t) over the last part of every rest (from the fit start fraction, 0.2 = last 80 %) and extrapolates it to the target, 10 800 s by default. It is ticked from the start when Extrapolated OCV is one of the OCV methods, and cannot be turned off then. **Apply to all rests** applies the switch, the global target and the fit start. A rest can have its own target (**Apply local target**, **Use global target**); global changes never overwrite a local target. The plot then shows the fit interval (shaded), the fit curve, the extrapolated point (star) and extends to the target; tick **Logarithmic time** for long targets. A target longer than the observed rest is allowed and reported with its ratio.
+Below the chart, two cards work as the measurement times of DCIR: their fields show the values the selected rest
+uses, and the label next to each title says whose they are (*all rests*, or *this rest* when it has its own).
+**Apply** keeps the typed values for this rest only; **Apply to All** makes them the values of every rest without its
+own choice; the reset button, shown only when the rest has its own choice, removes it.
+
+- **Sampled OCV**: the last real rest sample at or before **Sampled at** (empty = the last sample of the rest). Click
+  another sample to use exactly that row; **Use global rule** restores the rule. Only the results using that rest's
+  sampled OCV are recalculated.
+- **Extrapolated OCV**: **Extrapolate OCV** fits V = α + β·ln(t) over the last part of every rest (from the **Fit
+  start** fraction, 0.2 = last 80 %) and extrapolates it to the **Target**, 10 800 s by default. The box applies at
+  once to every rest; it is ticked from the start when Extrapolated OCV is one of the OCV methods, and cannot be
+  turned off then. A rest can have its own target and fit start (**Apply**, **Use global settings**); **Apply to All**
+  never overwrites them. The plot then shows the fit interval (shaded), the fit curve, the extrapolated point (star)
+  and extends to the target; tick **Logarithmic time** for long targets. A target longer than the observed rest is
+  allowed and reported with its ratio. The fit values below the cards are explained in
+  section 9.7 Fit statistics.
 - The **Pseudo OCV** of ICI appears as a dotted line labelled as not equilibrium when ICI results exist.
 
 **Accept** confirms the OCV values of the selected rest exactly as shown; **Accept all valid** does it for every rest with a sampled OCV (a missing extrapolated OCV is shown with its reason and only blocks the series that use it); **Return to Pending** withdraws it. A later change to that rest's values makes it Modified until you accept it again. A D result is used only when every rest it takes its OCV from is accepted.
@@ -405,7 +421,7 @@ The list shows every impulse with the state of its fits and its problems (failed
 
 Every canonical sample of the segment is drawn as a point, and no fit ever skips samples: a fit uses all the samples inside its window. **Suggested window, fixed** fits the whole segment. Drag the shaded window in either plot: the fit is recalculated once, when you release it. You can also type the bounds and choose **Apply window**. Edits made while a calculation runs are queued, and only the latest one is applied. **Re-apply automatic to this impulse** and **Calculate all impulses** use the automatic windows again; they drop manual windows and manual IR samples. GITT Δ needs no fit, and Delacourt has no editable window.
 
-Below the chart, each series of the impulse shows D, slope, intercept, R², samples and indicators, or the reason why D is missing. **Accept** confirms the fits of the impulse, **Accept all valid** those of every impulse that is not Invalid, and **Return to Pending** reopens one. A recalculation that changes a fit makes the impulse Modified. An impulse whose methods need no fit shows *No fit needed*; a failed fit of one series is shown and never used, without blocking the others.
+Below the chart, each series of the impulse shows D, slope, intercept, R², samples and indicators, or the reason why D is missing; section 9.7 Fit statistics explains every value. When the table is wider than the window, drag it sideways with the pointer, or use its scroll bar, Shift + wheel or a touchpad. **Accept** confirms the fits of the impulse, **Accept all valid** those of every impulse that is not Invalid, and **Return to Pending** reopens one. A recalculation that changes a fit makes the impulse Modified. An impulse whose methods need no fit shows *No fit needed*; a failed fit of one series is shown and never used, without blocking the others.
 
 ### 9.5 Diffusion Results
 
@@ -419,11 +435,59 @@ The chart draws only the D results in use: current, with a finite D, with an acc
 - **Branches**: show charge and discharge together, charge only or discharge only, on all three axes.
 - **Colour by branch** (default): charge in red and discharge in blue on every axis; each D series is told by its marker, shown next to its name, each OCV by its line style, R_on (◇) and R_off (✚) by their marker. **Colour by method** gives each D series its own colour and tells the branch by the marker (● charge, ▼ discharge).
 
+D and R are drawn as markers joined by lines by default; Advanced Settings → Results Chart switches to lines only or markers only and sets the marker size.
+
 The options panel is also the legend: each box shows the colour or the marker of its series. Hover a point for its provenance; click a D point to open its impulse in Pulse Fitting, an R point to open it in IR Drop. **Save image…** writes the chart as PNG.
 
 ### 9.6 Export accepted results
 
 **Export Table…** in Diffusion Results writes one row per complete impulse, as CSV or Parquet, with the columns you tick in the dialog: impulse, cycle and half-cycle; capacity, specific capacity and SoC at the start of the pulse (where D is placed); pre- and post-pulse IR drops with R_on and R_off; sampled, extrapolated and ICI pseudo-OCV of the rests around the pulse; the √t slope of GITT VA and ICI; and one D column per series in use, in the D unit chosen in Diffusion Results. By default charge and discharge go to separate files. Only D in use (accepted and current) is written: any other cell stays empty, never zero, and columns that are empty for every impulse are left out. When no D is in use, a message is shown and no file is created. An existing file is never overwritten; choose a new name. Every export also publishes the analysed snapshot as an immutable gregorithm generation, so the file stays traceable to its inputs.
+
+
+### 9.7 Fit statistics
+
+Every value below is computed by gregorithm; SparkBox only shows it. The colours are advisory: they never filter the
+lists, block **Accept** or change data. The limits marked *provisional* are those of the current gregorithm version.
+
+**√t fits (GITT VA pulse, ICI interruption).** The samples inside the window are fitted by least squares, with equal
+weights and no smoothing, to V(t) = a + s·√t.
+
+| Value | Meaning |
+|---|---|
+| **Slope** s [V/√s] | Slope of V against √t; it enters D. |
+| **Intercept** a [V] | Voltage extrapolated to t = 0 (√t = 0). With the GITT-intercept IR correction it gives the IR jump. |
+| **R²** | 1 − SSE / SST: the fraction of the voltage variance inside the window explained by the line. Close to 1 is good, but a long window can reach a high R² while bending, so read it together with q_L. Not available when the voltage is constant. |
+| **Samples** | Number of canonical samples inside the window. At least two distinct times are needed for a fit, at least three for q_L. |
+| **q_L** (linearity) [%] | RMSE / (\|s\| · (√t_end − √t_start)): the residual scatter relative to the voltage change the line spans in the window. Small means straight. Green ≤ 2 %, orange ≤ 5 %, red above (provisional). |
+| **q_S** (stability) [%] | Median of \|s′ − s\| / \|s\| over neighbouring windows, obtained by moving each window end by about 10 % of its samples. Small means the slope, and therefore D, does not depend on the exact window. Needs at least two valid neighbours. Green ≤ 5 %, orange ≤ 15 %, red above (provisional). |
+| **Statistical** | The worse of the q_L and q_S colours. N/D when the slope is not distinguishable from noise (\|s\| ≤ 2 standard errors) or one metric cannot be estimated: then no colour is given rather than a false green. |
+| **Physical** | Whether the window ends within the useful time t_useful = k · r_p² / D, where the semi-infinite √t model holds: green up to t_useful, orange up to 1.5 · t_useful, red beyond. N/D without r_p or a guiding D, which is not a failure. |
+| **To check** | An automatic window whose statistical colour is not green or whose physical colour is orange or red. The reason is in the Note column. |
+
+**Delacourt (spherical model, whole pulse).** The model is fitted to the whole pulse; there is no √t line, so q_L and
+q_S do not apply. Its two indicators are fit fidelity and identifiability:
+
+- **Fit fidelity**: the worse of the R² colour (green ≥ 0.99, orange ≥ 0.95, red below) and of the residual structure,
+  the lag-1 autocorrelation of the residuals (green ≤ 0.5, orange ≤ 0.8, red above). An autocorrelation close to 1
+  means the residuals follow a pattern: the model misses a systematic shape of the transient. All limits provisional.
+- **Identifiability**: red when D is not identifiable or lies on a search boundary, orange when D is identifiable but
+  its uncertainty cannot be estimated, green otherwise. RMSE and the relative uncertainty of D are recorded with the
+  result.
+
+**GITT Δ** has no fit. Its only check is the sign consistency of the method: under a current of sign s, both the OCV
+step ΔU and the corrected response ΔE_τ must move in the direction of s (red otherwise); a zero ΔU gives D = 0 and is
+orange because it cannot be drawn on a logarithmic axis.
+
+**OCV extrapolation (LOG_TIME_2P).** Each rest is fitted from its fit start to its end with V = α + β·ln(t / 1 s):
+
+| Value | Meaning |
+|---|---|
+| **α** [V] | Voltage of the fit at t = 1 s. |
+| **β** [V] | Change of voltage per natural-log unit of time: the relaxation rate. |
+| **Fit interval, samples** | Time range of the fitted samples and their number. |
+| **RMSE** [mV] | √(SSE / n): typical distance between the samples and the curve. |
+| **R²** | As above, for the log-time fit. |
+| **Target ratio** | Target time / observed rest. Above 1 the OCV is extrapolated beyond the data: allowed and reported, but less certain the larger the ratio. |
 
 ## 10 Compare datasets
 

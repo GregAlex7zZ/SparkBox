@@ -11,6 +11,7 @@ from .dqdv import DqdvParams, DqdvResult, DqdvState
 from .elab_controller import ElabController
 from .state import SessionState
 from .units_controller import UnitsController
+from .standby import STANDBY
 
 
 class _Sig(QObject):
@@ -131,7 +132,7 @@ class DqdvController(QObject):
 
         def job():
             try:
-                sig.finished.emit(ds_id, rid, backend.analyze_dqdv(ds_id, rid, p, pid, lambda pr: sig.progress.emit(ds_id, pr), ev))
+                sig.finished.emit(ds_id, rid, backend.analyze_dqdv(ds_id, rid, p, pid, STANDBY.paced(ds_id, lambda pr: sig.progress.emit(ds_id, pr), ev), ev))
             except DqdvCancelled:
                 sig.cancelled.emit(ds_id)
             except Exception as ex:

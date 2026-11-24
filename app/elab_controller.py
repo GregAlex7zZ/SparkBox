@@ -9,6 +9,7 @@ from .backend import Backend, ElabCancelled, ExportCancelled, Progress
 from .elaboration import (CYCLE_ORDER_LABELS, FACTORY_DEFAULTS, ElabParams, ElabResult, ElabState,
                           fmt_param, parse_number)
 from .state import SessionState
+from .standby import STANDBY
 
 
 class UserDefaults(QObject):
@@ -64,7 +65,7 @@ class _Job(QRunnable):
     def run(self) -> None:
         ds_id, ds_key, params, backend, cancel, sig = self.a
         try:
-            res = backend.elaborate(ds_key, params, lambda p: sig.progress.emit(ds_id, p), cancel)
+            res = backend.elaborate(ds_key, params, STANDBY.paced(ds_id, lambda p: sig.progress.emit(ds_id, p), cancel), cancel)
             sig.finished.emit(ds_id, res)
         except ElabCancelled:
             sig.cancelled.emit(ds_id)

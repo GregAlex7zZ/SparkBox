@@ -35,6 +35,7 @@ from .gitt_ici_export import BRANCH_ORDER, ExportTable, build_table
 from .gitt_ici_review import (ACCEPTED, MODIFIED, PENDING, accepted_ir, accepted_sets, ir_fingerprint, ir_state,
                               pulse_fingerprint, pulse_state, REJECT_MARK, REJECTED, rejected_pulses,
                               rest_fingerprint, rest_state, sync_acceptance, usage)
+from .standby import STANDBY
 
 
 class _Signals(QObject):
@@ -73,7 +74,7 @@ class _Job(QRunnable):
         """Execute the job; cancellation and errors are reported, never raised into Qt."""
         ds, rid, sig = self.ds_id, self.run_id, self.signals
         try:
-            value = self.work(lambda p: sig.progress.emit(ds, rid, p), self.token)
+            value = self.work(STANDBY.paced(ds, lambda p: sig.progress.emit(ds, rid, p), self.token), self.token)
             sig.finished.emit(ds, rid, value)
         except gregorithm.OperationCancelled:
             sig.cancelled.emit(ds, rid)

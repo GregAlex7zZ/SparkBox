@@ -5,7 +5,8 @@ which on Windows is the user's registry. Tests change those preferences (theme m
 isolation a test run overwrites the operator's real settings. ``QSettings(organization, application)`` always uses
 the native format, whatever ``setDefaultFormat`` says, so this module replaces ``PySide6.QtCore.QSettings`` before
 any app module is imported: every ``QSettings(organization, application)`` then reads and writes an INI file in a
-temporary folder for the whole test session, and the real preferences are never touched.
+temporary folder for the whole test session, and the real preferences are never touched. The app.standby gate is
+reset before every test (see _standby_released).
 Limits: a QSettings built with an explicit file path or format is left as is (it already names its own storage).
 """
 from __future__ import annotations
@@ -67,3 +68,12 @@ def pytest_unconfigure(config):
     sys.stdout.flush()
     sys.stderr.flush()
     os._exit(_exit_status)
+
+
+@pytest.fixture(autouse=True)
+def _standby_released():
+    """Every test starts with no dataset on standby: app.standby.STANDBY is one gate for the whole process, and a
+    window of an earlier test must not pause the calculations of the next one."""
+    from app.standby import STANDBY
+    STANDBY.reset()
+    yield

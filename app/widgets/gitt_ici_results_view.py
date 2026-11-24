@@ -47,7 +47,7 @@ METHOD_SYMBOLS = ("o", "s", "t", "d", "star", "h")
 SYMBOL_GLYPHS = {"o": "●", "s": "■", "t": "▼", "d": "◆", "star": "★", "h": "⬢"}
 BRANCHES = (("both", "Charge and discharge"), ("charge", "Charge only"), ("discharge", "Discharge only"))
 MARKER_SIZES = (("6", "Small"), ("9", "Medium"), ("12", "Large"))     # px of the D markers (R is one px smaller)
-DEFAULT_STYLE, DEFAULT_MARKER_SIZE = "markers", 9
+DEFAULT_STYLE, DEFAULT_MARKER_SIZE = "lines_markers", 9   # D vs x: markers joined by lines
 
 
 def short_label(label: str) -> str:

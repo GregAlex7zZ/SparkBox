@@ -190,7 +190,7 @@ def test_ir_tab_draws_the_samples_used_and_a_click_selects_a_sample(app, pipelin
     view.charts["pre_pulse"].sampleClicked.emit(row)                                     # click on a real sample
     app.processEvents()
     assert view.charts["pre_pulse"].marks["measured"] == row
-    assert view.local_reset.isEnabled() and view.local_pre.placeholderText() == f"row {row}"
+    assert view.local_reset.isEnabled() and view.pre_time.placeholderText() == f"row {row}"
     assert "✎" in view.list.topLevelItem(1).text(0)
     view.local_reset.click()                                                              # back to the global time
     app.processEvents()

@@ -11,6 +11,7 @@ from .dcir import (ACCEPTED, AUTO, REJECTED, DcirState, DetectionResult, Publish
 from .elab_controller import ElabController
 from .state import SessionState
 from .units_controller import UnitsController
+from .standby import STANDBY
 
 
 class _Sig(QObject):
@@ -121,7 +122,7 @@ class DcirController(QObject):
         def job():
             try:
                 sig.detected.emit(ds_id, rid, backend.detect_dcir(ds_id, rid, params, units,
-                                                                  lambda p: sig.progress.emit(ds_id, p), ev))
+                                                                  STANDBY.paced(ds_id, lambda p: sig.progress.emit(ds_id, p), ev), ev))
             except DcirCancelled:
                 sig.cancelled.emit(ds_id)
             except Exception as ex:
@@ -438,7 +439,7 @@ class DcirController(QObject):
         def job():
             try:
                 sig.published.emit(ds_id, did, backend.publish_dcir(did, decisions, t, units,
-                                                                    lambda p: sig.progress.emit(ds_id, p), ev,
+                                                                    STANDBY.paced(ds_id, lambda p: sig.progress.emit(ds_id, p), ev), ev,
                                                                     current_time_s=ti, event_times=own))
             except DcirCancelled:
                 sig.cancelled.emit(ds_id)

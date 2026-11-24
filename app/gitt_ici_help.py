@@ -89,12 +89,12 @@ INFO: dict[str, tuple[str, tuple[str, ...]]] = {
         "Pre-pulse (R_on): last rest sample → pulse sample at the sample time.",
         "Post-pulse (R_off): last sample under current → rest sample at the sample time.",
         "Click a blue sample to use it for this impulse; Use global times undoes it.")),
-    "ir_times": ("IR sample times · all impulses", (
-        "When the IR drop is read, for every impulse. Single-impulse times and clicked samples are kept.",
+    "ir_times": ("IR sample times", (
+        "When the IR drop is read. The fields show the times of the open impulse: its own, or those of all impulses.",
+        "Apply: these times for this impulse only (pre-pulse and post-pulse can differ; empty = the global time).",
+        "Apply to All: the times of every impulse; single-impulse times and clicked samples are kept. "
+        "Use global times removes them.",
         "Pre-pulse also sets the IR correction of Delacourt (and GITT Δ, if chosen). Post-pulse feeds no D.")),
-    "ir_local": ("IR sample times · this impulse", (
-        "Times for this impulse only; pre-pulse and post-pulse can differ. Empty = the global time of that side.",
-        "Use global times removes this impulse's times and clicked samples.")),
     "ir_accept": ("IR drop acceptance", (
         "Confirms the IR drops of this impulse: only accepted impulses give R_on / R_off in the results and export.",
         "The IR drops never block a D.",
@@ -103,17 +103,20 @@ INFO: dict[str, tuple[str, tuple[str, ...]]] = {
         "Reject excludes the impulse's R_on / R_off by hand; Return to Pending or Accept undoes it. Accept all "
         "valid skips rejected impulses.")),
     # --- OCV -------------------------------------------------------------------------------------------------------
-    "ocv_sampled": ("Sampled OCV of this rest", (
+    "ocv_sampled": ("Sampled OCV", (
         "The diamond in the chart: the last real rest sample with t ≤ the time, from the last sample under "
         "current.",
-        "Type a time for this rest only, or click another rest sample. Use global rule removes both.")),
-    "ocv_extrapolation": ("OCV settings · all rests", (
-        "How every rest without its own choice is read: sampled OCV time and LOG_TIME_2P extrapolation.",
-        "Sampled at: the time of the sampled OCV; empty = the last rest sample.",
-        "Extrapolation fits each rest with V = α + β·ln(t) and evaluates it at the target time.",
-        "Fit start: fraction of the rest skipped (0.2 = fit the last 80 %). Single-rest choices are kept.")),
-    "ocv_local": ("Extrapolation of this rest", (
-        "Target and fit start for this rest only; empty = the global value. Use global settings removes both.",)),
+        "An empty time means the last rest sample.",
+        "The field shows the time of the open rest: its own, or that of all rests. Click a rest sample to choose "
+        "an exact row.",
+        "Apply: this rest only. Apply to All: every rest without its own choice. Use global rule removes the "
+        "choice of this rest.")),
+    "ocv_extrapolation": ("Extrapolated OCV", (
+        "Extrapolate OCV (every rest, applied at once) fits each rest with V = α + β·ln(t) and evaluates it at the "
+        "target time.",
+        "Fit start: fraction of the rest skipped (0.2 = fit the last 80 %).",
+        "The fields show the values of the open rest: its own, or those of all rests. Apply: this rest only. "
+        "Apply to All: every rest without its own values. Use global settings removes them.")),
     "ocv_accept": ("Rest acceptance", (
         "Confirms this rest's OCV. A D is used only when its rests are accepted.",
         "● green accepted · ● orange pending or modified (changed after acceptance) · ● red rejected or invalid.",
@@ -133,7 +136,9 @@ INFO: dict[str, tuple[str, tuple[str, ...]]] = {
         "To check: an automatic window to look at. Its reason is in the Note column: a statistical indicator not "
         "green, a window beyond the useful time, or a search that skipped the first data (also with green "
         "indicators, because the early transient was left out).",
-        "Indicators are advisory: they never block acceptance.")),
+        "Indicators are advisory: they never block acceptance.",
+        "Every statistic (R², q_L, q_S, Delacourt and OCV-fit values) is explained in Help → User Guide, "
+        "section 9.7 Fit statistics.")),
     "fit_accept": ("Pulse acceptance", (
         "Accept confirms the fits of this impulse; only accepted fits give D in the results.",
         "● green accepted · ● orange pending or modified (recalculated after acceptance) · ● red rejected or "

@@ -6,10 +6,11 @@ current) of the selected rest, drawing the real samples, the sampled-OCV point, 
 the LOG_TIME_2P fit curve recorded by gregorithm, its fit interval (shaded), the extrapolated point at the target and
 the ICI pseudo-OCV when it exists. The view extends to the extrapolation target; a logarithmic time axis is available.
 
-Below, three cards: the sampled point of THIS rest (time, voltage, row; type a time for this rest only or click a
-sample, "Use global rule" removes both), the OCV settings of ALL rests (sampled-OCV time, empty = last rest sample;
-extrapolation on/off, target, fit start) applied to every rest without its own choice, and the extrapolation of THIS
-rest only (target and fit start, empty = global value). Then the fit values and Accept / Accept all valid / Reject /
+Below, two cards as in DCIR, whose fields show what the open rest uses (its own choice, or the value of all rests):
+Sampled OCV (time, voltage and row of the point; Sampled at, empty = last rest sample; a clicked sample counts as
+this rest's choice) and Extrapolated OCV (Extrapolate OCV for every rest, applied at once; target and fit start).
+In each card Apply keeps the values for this rest only, Apply to All makes them the values of every rest without its
+own choice, and Use global rule / Use global settings (shown when the rest has its own choice) removes it. Then the fit values and Accept / Accept all valid / Reject /
 Return to Pending. Every value comes from gregorithm (RestOcv, ICI records); nothing is fitted or interpolated here.
 """
 from __future__ import annotations
@@ -225,6 +226,11 @@ class OcvView(QWidget):
         split.setSizes([260, 1200])                         # list: LIST_WIDTH
         lay.addWidget(split)
         self._rest: Optional[int] = None
+        self._params = None                               # GittIciParams last shown (values of all rests)
+        self._samples: dict = {}
+        self._overrides: dict = {}
+        self._fit_overrides: dict = {}
+        self._filling = False
         self._loading = False
         self._list_key = None
         self.list.currentItemChanged.connect(self._list_changed)
@@ -233,9 +239,8 @@ class OcvView(QWidget):
         self._last = None
 
     def _strip(self) -> QWidget:
-        """Controls under the chart: three cards side by side (sampled OCV of this rest, OCV settings of all rests,
-        extrapolation of this rest), the fit values in full width, then the acceptance row. Nothing shares a line with
-        anything else."""
+        """Controls under the chart: two cards side by side (Sampled OCV, Extrapolated OCV; each with Apply for this
+        rest and Apply to All), the fit values in full width, then the acceptance row."""
         holder = QWidget()
         col = QVBoxLayout(holder)
         col.setContentsMargins(0, 0, 0, 0)
@@ -265,56 +270,51 @@ class OcvView(QWidget):
             lay.addStretch(1)
             lay.addLayout(row)
 
-        frame, lay = panel("Sampled OCV · this rest", "ocv_sampled")
+        frame, lay = panel("Sampled OCV", "ocv_sampled")
+        self.sampled_scope = muted("· all rests")      # whose choice the field shows: this rest or all rests
+        lay.itemAt(0).widget().layout().insertWidget(2, self.sampled_scope)
         self.sampled_text = QLabel()
         self.sampled_text.setWordWrap(True)
-        self.local_time = QLineEdit()
-        self.local_time.setToolTip("Sampled OCV time [s] of this rest only: the last real rest sample with t ≤ this "
-                                   "time, from the last sample under current.")
-        self.local_time.setAccessibleName("Sampled OCV time of this rest [s]")
-        self.time_apply = button("Apply to this rest", "ghost")
+        self.sample_time = QLineEdit()
+        self.sample_time.setToolTip("Sampled OCV time [s]: the last real rest sample with t ≤ this time, from the last "
+                                    "sample under current; empty = the last rest sample.")
+        self.sample_time.setAccessibleName("Sampled OCV time [s]")
+        self.time_apply = button("Apply", "ghost")
+        self.time_apply.setToolTip("Use this time for this rest only.")
+        self.sample_apply_all = button("Apply to All", "ghost")
+        self.sample_apply_all.setToolTip("Make this the sampled OCV time of every rest; times and samples chosen for "
+                                         "single rests are kept (Use global rule removes them).")
         self.last_sample = button("Use global rule", "ghost")
         self.last_sample.setToolTip("Drop the time or the sample chosen for this rest and use the rule of all rests.")
         lay.addWidget(self.sampled_text)
         f = form()
-        f.addRow("Sampled at [s]", self.local_time)
+        f.addRow("Sampled at [s]", self.sample_time)
         lay.addLayout(f)
-        buttons(lay, self.time_apply, self.last_sample)
+        buttons(lay, self.time_apply, self.sample_apply_all, self.last_sample)
         cards.addWidget(frame, 1)
 
-        frame, lay = panel("OCV settings · all rests", "ocv_extrapolation")
-        self.sample_time = QLineEdit()
-        self.sample_time.setPlaceholderText("last sample")
-        self.sample_time.setToolTip("Sampled OCV time [s] of every rest without its own choice; empty = the last "
-                                    "rest sample.")
-        self.sample_time.setAccessibleName("Sampled OCV time of all rests [s]")
+        frame, lay = panel("Extrapolated OCV", "ocv_extrapolation")
+        self.extrap_scope = muted("· all rests")       # whose settings the fields show: this rest or all rests
+        lay.itemAt(0).widget().layout().insertWidget(2, self.extrap_scope)
         self.extrapolate = QCheckBox("Extrapolate OCV")
         self.global_target, self.fit_start = QLineEdit(), QLineEdit()
-        self.global_target.setToolTip("Global relaxation target [s] for every rest without a local target.")
+        self.global_target.setToolTip("Relaxation target [s] at which the fit is evaluated.")
         self.fit_start.setToolTip("Start of the LOG_TIME_2P fit as a fraction of the observed rest (0.2 = last 80 %).")
+        self.global_target.setAccessibleName("Extrapolation target [s]")
+        self.fit_start.setAccessibleName("Fit start fraction")
         f = form()
-        f.addRow("Sampled at [s]", self.sample_time)
         f.addRow(self.extrapolate)
         f.addRow("Target [s]", self.global_target)
         f.addRow("Fit start (fraction)", self.fit_start)
         lay.addLayout(f)
-        self.apply_settings = button("Apply to all rests", "run")
-        buttons(lay, self.apply_settings)
-        cards.addWidget(frame, 1)
-
-        frame, lay = panel("Extrapolation · this rest", "ocv_local")
-        self.local_target, self.local_fit = QLineEdit(), QLineEdit()
-        self.local_target.setToolTip("Target [s] of this rest only; empty = the global target.")
-        self.local_fit.setToolTip("Fit start fraction of this rest only; empty = the global fit start.")
-        self.local_target.setAccessibleName("Extrapolation target of this rest [s]")
-        self.local_fit.setAccessibleName("Fit start fraction of this rest")
-        self.local_apply = button("Apply to this rest", "ghost")
+        self.local_apply = button("Apply", "ghost")
+        self.local_apply.setToolTip("Use this target and fit start for this rest only.")
+        self.apply_settings = button("Apply to All", "run")
+        self.apply_settings.setToolTip("Make these the target and fit start of every rest; values chosen for single "
+                                       "rests are kept (Use global settings removes them).")
         self.local_reset = button("Use global settings", "ghost")
-        f = form()
-        f.addRow("Target [s]", self.local_target)
-        f.addRow("Fit start (fraction)", self.local_fit)
-        lay.addLayout(f)
-        buttons(lay, self.local_apply, self.local_reset)
+        self.local_reset.setToolTip("Drop the target and fit start chosen for this rest.")
+        buttons(lay, self.local_apply, self.apply_settings, self.local_reset)
         cards.addWidget(frame, 1)
         col.addLayout(cards)
 
@@ -340,9 +340,13 @@ class OcvView(QWidget):
         col.addLayout(row)
         self.last_sample.clicked.connect(lambda: self._rest is not None and self.sampleChosen.emit(self._rest, None))
         self.time_apply.clicked.connect(self._apply_time)
-        self.local_time.returnPressed.connect(self._apply_time)
+        self.sample_time.returnPressed.connect(self._apply_time)
+        self.sample_apply_all.clicked.connect(self._apply_sample_all)
         self.apply_settings.clicked.connect(self._apply_settings)
+        self.extrapolate.toggled.connect(self._toggle_extrapolation)
         self.local_apply.clicked.connect(self._apply_local)
+        self.global_target.returnPressed.connect(self._apply_local)
+        self.fit_start.returnPressed.connect(self._apply_local)
         self.local_reset.clicked.connect(
             lambda: self._rest is not None and self.extrapolationChosen.emit(self._rest, None, None))
         self.accept.clicked.connect(self._accept_current)
@@ -358,39 +362,76 @@ class OcvView(QWidget):
             self.acceptRequested.emit([self._rest])
             select_next(self.list)
 
+    def _globals(self):
+        """(extrapolation on, target [s], fit start, sampled time [s] or None) of all rests, as applied."""
+        p = self._params
+        return (p.extrapolation_active, p.ocv_target_s, p.ocv_fit_start_fraction, p.ocv_sample_time_s)
+
     def _apply_settings(self) -> None:
-        target, err_t = parse_optional_positive(self.global_target.text())
-        sample_time, err_s = parse_optional_positive(self.sample_time.text())
-        fraction = _fraction(self.fit_start.text())
-        if err_t or err_s or target is None or fraction is None:
-            self.fit_text.setText("Enter a target greater than 0 s, a fit start between 0 and 1 (excluded) and a "
-                                  "sampled time greater than 0 s (or empty for the last sample).")
+        """Apply to All of the Extrapolated OCV card: target and fit start of every rest."""
+        if self._params is None:
             return
+        target, err_t = parse_optional_positive(self.global_target.text())
+        fraction = _fraction(self.fit_start.text())
+        if err_t or target is None or fraction is None:
+            self.fit_text.setText("Enter a target greater than 0 s and a fit start between 0 and 1 (excluded).")
+            return
+        _on, _t, _f, sample_time = self._globals()
         self.settingsApplied.emit(self.extrapolate.isChecked(), target, fraction, sample_time)
 
-    def _apply_time(self) -> None:
-        """Sampled OCV time of this rest only; an empty field returns to the rule of all rests."""
-        if self._rest is None:
+    def _toggle_extrapolation(self, on: bool) -> None:
+        """The Extrapolate OCV box applies at once to every rest, with the global target and fit start."""
+        if self._params is None or self._filling:
             return
-        seconds, err = parse_optional_positive(self.local_time.text())
+        _on, target, fraction, sample_time = self._globals()
+        self.settingsApplied.emit(on, target, fraction, sample_time)
+
+    def _apply_sample_all(self) -> None:
+        """Apply to All of the Sampled OCV card: sampled time of every rest (empty = the last rest sample)."""
+        if self._params is None:
+            return
+        seconds, err = parse_optional_positive(self.sample_time.text())
+        if err:
+            self.fit_text.setText("Enter a sampled OCV time greater than 0 s, or leave it empty for the last sample.")
+            return
+        on, target, fraction, _s = self._globals()
+        self.settingsApplied.emit(on, target, fraction, seconds)
+
+    def _apply_time(self) -> None:
+        """Apply of the Sampled OCV card: time of this rest only. An empty field, or the global time typed back on a
+        rest without its own choice, means the rule of all rests."""
+        if self._rest is None or self._params is None:
+            return
+        seconds, err = parse_optional_positive(self.sample_time.text())
         if err:
             self.fit_text.setText("Enter a sampled OCV time greater than 0 s, or leave it empty for the global rule.")
             return
-        if seconds is None:
-            self.sampleChosen.emit(self._rest, None)
+        own = self._rest in self._samples
+        if seconds is None or (seconds == self._globals()[3] and not own):
+            if own:
+                self.sampleChosen.emit(self._rest, None)
         else:
             self.sampleTimeChosen.emit(self._rest, seconds)
 
     def _apply_local(self) -> None:
-        """Target and fit start of this rest only; an empty field keeps the global value."""
-        target, err = parse_optional_positive(self.local_target.text())
-        text = self.local_fit.text().strip()
+        """Apply of the Extrapolated OCV card: target and fit start of this rest only; an empty field, or the global
+        value typed back, keeps the global value."""
+        if self._rest is None or self._params is None:
+            return
+        target, err = parse_optional_positive(self.global_target.text())
+        text = self.fit_start.text().strip()
         fraction = _fraction(text) if text else None
         if err or (text and fraction is None):
-            self.fit_text.setText("Enter a local target greater than 0 s and a fit start between 0 and 1 (excluded), "
+            self.fit_text.setText("Enter a target greater than 0 s and a fit start between 0 and 1 (excluded), "
                                   "or leave a field empty for the global value.")
             return
-        if self._rest is not None:
+        _on, g_target, g_fraction, _s = self._globals()
+        if target == g_target and self._rest not in self._overrides:
+            target = None
+        if fraction == g_fraction and self._rest not in self._fit_overrides:
+            fraction = None
+        own = self._rest in self._overrides or self._rest in self._fit_overrides
+        if target is not None or fraction is not None or own:
             self.extrapolationChosen.emit(self._rest, target, fraction)
 
     def _list_changed(self, current, _previous) -> None:
@@ -442,31 +483,20 @@ class OcvView(QWidget):
         finally:
             self._loading = False
         locked = "relaxation_extrapolated" in params.ocv_methods
-        if not self.global_target.hasFocus():
-            self.global_target.setText(f"{params.ocv_target_s:g}")
-        if not self.fit_start.hasFocus():
-            self.fit_start.setText(f"{params.ocv_fit_start_fraction:g}")
-        if not self.sample_time.hasFocus():
-            self.sample_time.setText("" if params.ocv_sample_time_s is None else f"{params.ocv_sample_time_s:g}")
-        self.extrapolate.blockSignals(True)
+        self._params, self._samples = params, samples
+        self._overrides, self._fit_overrides = overrides, fit_overrides
+        self._filling = True
         self.extrapolate.setChecked(params.extrapolation_active)
-        self.extrapolate.blockSignals(False)
+        self._filling = False
         self.extrapolate.setEnabled(not locked and not running)
         self.extrapolate.setToolTip("Always on: Extrapolated OCV is one of the OCV methods of the D results." if locked else
                                     "Show the extrapolated OCV of every rest for comparison.")
-        for w in (self.global_target, self.fit_start, self.sample_time, self.apply_settings):
-            w.setEnabled(not running)
         rest = next((r for r in rests if r.rest_segment_id == open_rest), None)
         self._rest = None if rest is None else rest.rest_segment_id
         state = states.get(self._rest)
         self.chart.editable = not running
         editable = rest is not None and not running
-        for w in (self.local_time, self.time_apply):
-            w.setEnabled(editable)
-        self.last_sample.setEnabled(editable and self._rest in samples)
-        for w in (self.local_target, self.local_fit, self.local_apply):
-            w.setEnabled(editable and params.extrapolation_active)
-        self.local_reset.setEnabled(editable and (self._rest in overrides or self._rest in fit_overrides))
+        self._fill_fields(not running, editable)
         self.accept.setEnabled(state in (PENDING, MODIFIED, REJECTED) and not running)
         self.revoke.setEnabled(state in (ACCEPTED, MODIFIED, REJECTED) and not running)
         self.reject.setEnabled(rest is not None and state != REJECTED and not running)
@@ -497,20 +527,6 @@ class OcvView(QWidget):
                                       f"{rest.sampled.source_row} · {how}")
         else:
             self.sampled_text.setText(f"Not available: {rest.sampled_reason}")
-        choice = samples.get(rest.rest_segment_id)
-        self.local_time.setPlaceholderText(
-            f"row {choice}" if choice is not None and not isinstance(choice, tuple) else
-            f"global {params.ocv_sample_time_s:g}" if params.ocv_sample_time_s is not None else "last sample")
-        if not self.local_time.hasFocus():
-            self.local_time.setText(f"{choice[1]:g}" if isinstance(choice, tuple) else "")
-        self.local_target.setPlaceholderText(f"global {params.ocv_target_s:g}")
-        self.local_fit.setPlaceholderText(f"global {params.ocv_fit_start_fraction:g}")
-        if not self.local_target.hasFocus():
-            target = overrides.get(rest.rest_segment_id)
-            self.local_target.setText("" if target is None else f"{target:g}")
-        if not self.local_fit.hasFocus():
-            fraction = fit_overrides.get(rest.rest_segment_id)
-            self.local_fit.setText("" if fraction is None else f"{fraction:g}")
         fit = rest.fit
         lines = []
         if params.extrapolation_active:
@@ -537,6 +553,42 @@ class OcvView(QWidget):
                           "use its sampled OCV.")
         self._last = (rest, params.extrapolation_active, pseudo.get(self._rest, (None, None))[1])
         self._redraw()
+
+    def _fill_fields(self, idle: bool, editable: bool) -> None:
+        """Fill both cards with what the open rest uses: its own sampled time or clicked sample, its own target and
+        fit start, or the values of all rests; the scope labels say whose values they are. ``idle``: no calculation
+        runs; ``editable``: idle and a rest is open."""
+        params, rest = self._params, self._rest
+        on, target, fraction, sample_time = self._globals()
+        choice = self._samples.get(rest) if rest is not None else None
+        own_sample = choice is not None
+        if isinstance(choice, tuple):
+            text, placeholder = f"{choice[1]:g}", "last sample"
+        elif own_sample:
+            text, placeholder = "", f"row {choice}"
+        else:
+            text, placeholder = ("" if sample_time is None else f"{sample_time:g}"), "last sample"
+        self.sample_time.setPlaceholderText(placeholder)
+        if not self.sample_time.hasFocus():
+            self.sample_time.setText(text)
+        self.sampled_scope.setText("· this rest" if own_sample else "· all rests")
+        own_target = rest is not None and rest in self._overrides
+        own_fit = rest is not None and rest in self._fit_overrides
+        if not self.global_target.hasFocus():
+            self.global_target.setText(f"{self._overrides[rest] if own_target else target:g}")
+        if not self.fit_start.hasFocus():
+            self.fit_start.setText(f"{self._fit_overrides[rest] if own_fit else fraction:g}")
+        self.extrap_scope.setText("· this rest" if own_target or own_fit else "· all rests")
+        self.sample_time.setEnabled(idle)
+        self.sample_apply_all.setEnabled(idle)
+        self.time_apply.setEnabled(editable)
+        self.last_sample.setEnabled(editable and own_sample)
+        self.last_sample.setVisible(own_sample)
+        for w in (self.global_target, self.fit_start, self.apply_settings):
+            w.setEnabled(idle and params.extrapolation_active)
+        self.local_apply.setEnabled(editable and params.extrapolation_active)
+        self.local_reset.setEnabled(editable and (own_target or own_fit))
+        self.local_reset.setVisible(own_target or own_fit)
 
     def _redraw(self) -> None:
         if self._last is not None:

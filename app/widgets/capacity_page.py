@@ -22,7 +22,8 @@ from ..theme import ThemeManager, set_prop
 from ..units import UnitPrefs
 from .capacity_table import CapacityModel
 from .chart import ChartWidget
-from .controls import DividerSplitter, ElidedLabel, InfoButton, StatusPill
+from .combos import FitComboBox
+from .controls import DividerSplitter, ElidedLabel, FlowLayout, InfoButton, StatusPill, group
 from .elab_table import FrozenTable
 
 REFERENCE_INFO = (
@@ -287,23 +288,19 @@ class CapacityPage(QWidget):
         v = QVBoxLayout(w)
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(8)
-        h = QHBoxLayout()
-        h.setSpacing(14)
+        bar = QWidget()
+        h = FlowLayout(bar, h_spacing=14, v_spacing=6, last_right=True)   # wraps instead of cutting the names
         self.combos: dict[str, QComboBox] = {}
         for axis, label in (("x", "X"), ("y1", "Y1"), ("y2", "Y2")):
             l = _lab(label, muted=True, size=12, weight=500)
             l.setFixedWidth(18)
             l.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            c = QComboBox()
-            c.setMinimumWidth(150)
-            c.setMaximumWidth(220)
+            c = FitComboBox(min_width=120)        # always as wide as the chosen column name
             c.setAccessibleName(f"{label} axis")
             c.activated.connect(lambda i, a=axis, cb=c: self._set_axis(a, cb.itemData(i)))
             l.setBuddy(c)
-            h.addWidget(l)
-            h.addWidget(c)
+            h.addWidget(group(l, c, spacing=6))
             self.combos[axis] = c
-        h.addStretch(1)
         tools = QFrame()
         tools.setObjectName("Segmented")
         tl = QHBoxLayout(tools)
@@ -327,7 +324,7 @@ class CapacityPage(QWidget):
         self.t_reset.clicked.connect(lambda: self._edit(lambda c: setattr(c.view, "viewport", Viewport())))
         self.t_save.clicked.connect(self._save_image)
         h.addWidget(tools)
-        v.addLayout(h)
+        v.addWidget(bar)
         self.hidden = _lab(muted=True, size=12, cls=ElidedLabel)
         v.addWidget(self.hidden)
         self.split = DividerSplitter(self.theme, Qt.Orientation.Vertical)   # visible chart/table divider
