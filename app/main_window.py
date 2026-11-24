@@ -1,6 +1,7 @@
 """Main window: shell layout, section routing, unlock logic and the import controller."""
 from __future__ import annotations
 import uuid
+from typing import Optional
 from pathlib import Path
 from PySide6.QtCore import QObject, QRunnable, QSettings, Qt, QThreadPool, Signal
 from PySide6.QtGui import QAction, QKeySequence
@@ -36,6 +37,8 @@ from .export_center import ExportCenterController
 from .file_dialogs import dataset_folder, open_dataset, remember_import
 from .widgets.capacity_dock import CapacitySettingsDock
 from .widgets.capacity_page import CapacityPage
+from .standby import STANDBY
+from .widgets.combos import install_popup_fit
 from .widgets.dcir_dock import DcirSettingsDock
 from .widgets.dcir_page import DcirPage
 from .widgets.gitt_ici_dock import GittIciSettingsDock
@@ -101,6 +104,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self, backend: Backend, theme: ThemeManager, demo: bool = False):
         super().__init__()
+        install_popup_fit(QApplication.instance())      # every drop-down list as wide as its longest item
         self.backend, self.theme, self.demo = backend, theme, demo
         self._closing = False
         self.state = SessionState()
@@ -264,6 +268,13 @@ class MainWindow(QMainWindow):
                               Section.DQDV: self.dqdv_dock, Section.COMPARISON: self.comparison_dock,
                               Section.GITT_ICI: self.gitt_ici_dock})
         self.dock.hide()
+        # page and dock of each section, for the standby of the sections not on screen (see _park_views)
+        self._views: dict[Section, tuple] = {
+            Section.ELABORATION: (self.elab_page, self.elab_dock), Section.EXPLORER: (self.explorer_page, self.plot_dock),
+            Section.CAPACITY: (self.capacity_page, self.cap_dock), Section.DCIR: (self.dcir_page, self.dcir_dock),
+            Section.GITT_ICI: (self.gitt_ici_page,), Section.DQDV: (self.dqdv_page, self.dqdv_dock)}
+        self._view_ds: dict = {}
+        self._shown_in_go: Optional[Section] = None
         split_lay.addWidget(card, 1)
         split_lay.addWidget(self.dock, 0)
         rl.addWidget(self.split, 1)
@@ -380,20 +391,17 @@ class MainWindow(QMainWindow):
         if new is not self.current:
             self.statusBar().showMessage(f"{SECTION_LABELS[self.current]} is not available for this dataset; "
                                          f"showing {SECTION_LABELS[new]}.", 6000)
+        self._shown_in_go = None
         self.go(new)
         self.band.set_active(None if self.current is Section.COMPARISON else self.state.active_id)
         self.data_page.show_dataset(self.state.active_id)
-        self.elab_page.show_dataset(self.state.active_id)
-        self.elab_dock.show_dataset(self.state.active_id)
-        self.explorer_page.show_dataset(self.state.active_id)
-        self.plot_dock.show_dataset(self.state.active_id)
-        self.capacity_page.show_dataset(self.state.active_id)
-        self.cap_dock.show_dataset(self.state.active_id)
-        self.dcir_page.show_dataset(self.state.active_id)
-        self.gitt_ici_page.show_dataset(self.state.active_id)
-        self.dcir_dock.show_dataset(self.state.active_id)
-        self.dqdv_page.show_dataset(self.state.active_id)
-        self.dqdv_dock.show_dataset(self.state.active_id)
+        self._standby()
+        for section in self._views:
+            if section is self.current:
+                if self._shown_in_go is not section:      # go() above may have loaded it already
+                    self._show_views(section)             # the section on screen always shows the active dataset
+            else:
+                self._park_views(section)
         if self.current is Section.EXPLORER:
             self.explorer_page.activate()
         elif self.current is Section.CAPACITY:
@@ -405,6 +413,11 @@ class MainWindow(QMainWindow):
         if self.current is Section.COMPARISON and section is not Section.COMPARISON:
             self.comparison_page.activate(False)
         self.current = section
+        self._standby()
+        if section in self._views and any(self._view_ds.get(v) != self.state.active_id
+                                          for v in self._views[section]):
+            self._show_views(section)                     # a parked section loads the active dataset now
+            self._shown_in_go = section
         self.stack.setCurrentWidget(self.pages[section])
         self.nav.set_current(section)
         self.dock.set_section(section, DOCK_TITLES.get(section, "Advanced Settings"))
@@ -421,6 +434,38 @@ class MainWindow(QMainWindow):
             self.explorer_page.activate()
         elif section is Section.CAPACITY:
             self.capacity_page.activate()
+
+    # --- standby of what is not shown ----------------------------------------------------------------------------
+    # Only the selected dataset works: the calculations of the others pause (app.standby), and the pages and docks of
+    # the sections not on screen are parked (they keep nothing of another dataset and load the active one only when
+    # their section is opened). Going back to a dataset or a section can therefore take a moment to load.
+
+    def _standby(self) -> None:
+        """Let only the active dataset's calculations run (all of them in Comparison, which overlays datasets)."""
+        STANDBY.set_active(self.state.active_id, everyone=self.current is Section.COMPARISON)
+
+    def _show_views(self, section: Section) -> None:
+        """Show the active dataset on the page and dock of ``section``."""
+        for view in self._views[section]:
+            view.show_dataset(self.state.active_id)
+            self._view_ds[view] = self.state.active_id
+
+    def _park_views(self, section: Section) -> None:
+        """Park the page and dock of a section not on screen when they show another dataset than the active one:
+        they are emptied (no drawing, no loading) until the section is opened again."""
+        for view in self._views[section]:
+            if self._view_ds.get(view, self.state.active_id) not in (None, self.state.active_id):
+                view.show_dataset(None)
+                self._view_ds[view] = None
+
+    def load_docks(self) -> None:
+        """Show the active dataset in every section dock, parked or not: Settings → Advanced edits the active
+        dataset through these docks, whatever section is on screen."""
+        for views in self._views.values():
+            for dock in views[1:]:
+                if self._view_ds.get(dock) != self.state.active_id:
+                    dock.show_dataset(self.state.active_id)
+                    self._view_ds[dock] = self.state.active_id
 
     def open_export_center(self) -> None:
         """Export button: the Export Center for the active dataset (every section's exports in one window)."""
@@ -768,6 +813,7 @@ class MainWindow(QMainWindow):
             super().closeEvent(event)
             return
         self._closing = True
+        STANDBY.open_all()                                  # paused workers must reach their cancellation checks
         self.hide()
         dialog = getattr(self, "_settings_dialog", None)
         if dialog is not None:

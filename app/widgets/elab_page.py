@@ -13,7 +13,7 @@ from ..elaboration import (CYCLE_ORDER_LABELS, NUM_FIELDS, STATE_LABEL, ElabStat
 from ..formatting import fmt_int, fmt_time
 from ..icons import make_icon, pixmap
 from ..theme import ThemeManager, set_prop
-from .controls import LabelRow, SampleBlock, SegmentedControl, StatusPill
+from .controls import ElidedLabel, LabelRow, SampleBlock, SegmentedControl, StatusPill
 from .elab_table import ElabModel, FrozenTable
 
 PILL_ICON = {ElabView.NOT_PROCESSED: "circle-dashed", ElabView.INVALID: "circle-dashed", ElabView.CURRENT: "circle-check",
@@ -185,7 +185,9 @@ class ElabPage(QWidget):
         self.back = _btn("Back to Summary", "ghost", 30)
         self.back.clicked.connect(lambda: self._set_mode("summary"))
         self.title = _lab("Data Elaboration", size=16, weight=500)
-        self.subtitle = _lab("", muted=True, size=12)
+        self.subtitle = ElidedLabel()                 # ends with "…" (full text as tooltip) when short of room
+        self.subtitle.setProperty("muted", True)
+        self.subtitle.setStyleSheet("font-size: 9pt;")
         self.tabs = SegmentedControl([("points", "Points"), ("segments", "Segments")], small=True, aria="Table")
         self.tabs.valueChanged.connect(self._set_tab)
         self.pill = Pill(self.theme)

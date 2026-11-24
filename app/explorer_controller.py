@@ -10,6 +10,10 @@ from .explorer import (CHART, UPDATING_DELAY_MS, VIEW_DEBOUNCE_MS, ExplorerState
                        resolve_cycles)
 from .state import SessionState
 from .units_controller import UnitsController
+from .standby import STANDBY
+
+
+DETAILS_REST_MS = 60          # hover details are read once the pointer rests this long
 
 
 class _Sig(QObject):
@@ -21,6 +25,7 @@ class _Sig(QObject):
     flatCancelled = Signal(str)
     flatFailed = Signal(str, str)
     details = Signal(str, int, object)       # ds_id, source_row, dict
+    detailsDone = Signal()                   # a details read ended (successfully or not)
 
 
 class _Run(QRunnable):
@@ -61,6 +66,13 @@ class ExplorerController(QObject):
         self._sig.flatCancelled.connect(self._on_flat_cancelled)
         self._sig.flatFailed.connect(self._on_flat_failed)
         self._sig.details.connect(self.detailsReady)
+        self._sig.detailsDone.connect(self._details_finished)
+        self._details_wanted: Optional[tuple[str, int]] = None    # latest hovered (ds_id, row) not read yet
+        self._details_busy = False
+        self._details_timer = QTimer(self)
+        self._details_timer.setSingleShot(True)
+        self._details_timer.setInterval(DETAILS_REST_MS)
+        self._details_timer.timeout.connect(self._details_rest)
         self._debounce = QTimer(self)
         self._debounce.setSingleShot(True)
         self._debounce.setInterval(VIEW_DEBOUNCE_MS)
@@ -224,7 +236,7 @@ class ExplorerController(QObject):
 
         def job():
             try:
-                img = backend.render_all_points(req, style, lambda p: sig.progress.emit(ds_id, p), ev)
+                img = backend.render_all_points(req, style, STANDBY.paced(ds_id, lambda p: sig.progress.emit(ds_id, p), ev), ev)
                 sig.flat.emit(ds_id, img)
             except RenderCancelled:
                 sig.flatCancelled.emit(ds_id)
@@ -293,19 +305,43 @@ class ExplorerController(QObject):
             self.changed.emit(ds_id)
 
     # --- hover details ---
+    # The readout shows the curve values at once; the other columns of the row (cycle, half-cycle, step) come from
+    # the backend, which reads a whole Parquet row group (up to 65 536 rows) for a row outside its small cache. A
+    # sweep across the full view touched a new group at almost every mouse move and queued one such read per move:
+    # about one CPU core busy while hovering, which lagged slower computers. Now the details are asked only when the
+    # pointer rests (DETAILS_REST_MS), one read at a time, and only for the latest row.
     def request_details(self, ds_id: str, source_row: int) -> None:
+        if self.result_id(ds_id) is None or source_row < 0:
+            return
+        self._details_wanted = (ds_id, source_row)
+        self._details_timer.start()
+
+    def _details_rest(self) -> None:
+        """The pointer rested: read the latest requested row, unless a read is already running (it chains)."""
+        if self._details_busy or self._details_wanted is None:
+            return
+        ds_id, source_row = self._details_wanted
+        self._details_wanted = None
         rid = self.result_id(ds_id)
-        if rid is None or source_row < 0:
+        if rid is None:
             return
         units, backend, sig = self.units.units_for(ds_id), self.backend, self._sig
+        self._details_busy = True
 
         def job():
             try:
                 sig.details.emit(ds_id, source_row, backend.point_details(rid, source_row, units))
             except Exception:
                 pass                                          # the readout keeps the values it already shows
+            finally:
+                sig.detailsDone.emit()
 
         QThreadPool.globalInstance().start(_Run(job))
+
+    def _details_finished(self) -> None:
+        self._details_busy = False
+        if self._details_wanted is not None:                  # the pointer moved on meanwhile: read its row now
+            self._details_rest()
 
     # --- external events ---
     def result_replaced(self, ds_id: str) -> None:

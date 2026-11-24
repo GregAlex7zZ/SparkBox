@@ -186,6 +186,9 @@ class SettingsDialog(QDialog):
         self.advanced_section.setAccessibleName("Section")
         self.advanced_stack = QStackedWidget()
         self.advanced_stack.setObjectName("DockHost")
+        load = getattr(self.owner, "load_docks", None)
+        if callable(load):
+            load()                                      # parked docks (sections not on screen) show the dataset again
         for section, panel in self.owner.dock.docks.items():
             self.advanced_section.addItem(SECTION_LABELS[section], section.value)
             if not self.ds_id and section not in (Section.COMPARISON, Section.DCIR):

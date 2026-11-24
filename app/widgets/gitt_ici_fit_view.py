@@ -92,7 +92,7 @@ def _issues(event, records) -> str:
 
 class ValuesTable(QTableWidget):
     """Read-only fit values, one row per series, styled like the result tables of the other pages (alternating rows,
-    columns sized to their values). Always as tall as its rows, so it never scrolls inside the page. The note (last
+    columns sized to their values). Always as tall as its rows: it scrolls only sideways (drag, bar, Shift + wheel, touchpad). The note (last
     column) wraps inside its cell and is also a wrapping tooltip, so a long note is always readable in full."""
 
     def __init__(self):
@@ -108,6 +108,10 @@ class ValuesTable(QTableWidget):
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         header.setStretchLastSection(True)
         self.setAccessibleName("Fit values")
+        # Per pixel: by whole columns a wide table had only 2-3 stops and could not be dragged smoothly.
+        self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.horizontalScrollBar().rangeChanged.connect(lambda *_: self._fit_height())
+        self._pan_from: Optional[tuple[float, int]] = None      # pointer x and bar value at the start of a drag
 
     def set_rows(self, heads: list[str], rows: list[list[str]], tips: dict | None = None) -> None:
         """Show ``rows`` under ``heads``; numbers right-aligned, the note wrapped and also as a tooltip; ``tips``
@@ -127,9 +131,59 @@ class ValuesTable(QTableWidget):
                 self.setItem(i, j, cell)
         self.setVisible(bool(rows))
         self.resizeRowsToContents()
-        height = self.horizontalHeader().height() + sum(self.rowHeight(i) for i in range(len(rows)))
-        self.setFixedHeight(height + 2 * self.frameWidth() + (self.horizontalScrollBar().sizeHint().height()
-                                                              if self.horizontalScrollBar().isVisible() else 0))
+        self._fit_height()
+
+    def _fit_height(self) -> None:
+        """As tall as every row, plus the scroll bar whenever the columns are wider than the table (otherwise the
+        bar would cover the last row)."""
+        bar = self.horizontalScrollBar()
+        scrolls = bar.maximum() > 0
+        height = (self.horizontalHeader().height() + sum(self.rowHeight(i) for i in range(self.rowCount()))
+                  + 2 * self.frameWidth() + (bar.sizeHint().height() if scrolls else 0))
+        if height != self.minimumHeight():
+            self.setFixedHeight(height)
+        if self._pan_from is None:
+            self.viewport().setCursor(Qt.CursorShape.OpenHandCursor if scrolls else Qt.CursorShape.ArrowCursor)
+
+    # --- scrolling with the pointer: drag the table, Shift + wheel or a horizontal (touchpad) wheel -----------------
+    def mousePressEvent(self, event) -> None:  # noqa: N802  (Qt override)
+        """Start dragging the table sideways (cells are not selectable, so a drag has no other meaning)."""
+        if event.button() == Qt.MouseButton.LeftButton and self.horizontalScrollBar().maximum() > 0:
+            self._pan_from = (event.position().x(), self.horizontalScrollBar().value())
+            self.viewport().setCursor(Qt.CursorShape.ClosedHandCursor)
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:  # noqa: N802  (Qt override)
+        """The table follows the pointer while it is dragged."""
+        if self._pan_from is not None:
+            x0, value = self._pan_from
+            self.horizontalScrollBar().setValue(round(value + x0 - event.position().x()))
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802  (Qt override)
+        """End of a drag."""
+        if self._pan_from is not None and event.button() == Qt.MouseButton.LeftButton:
+            self._pan_from = None
+            self._fit_height()                                   # restores the open-hand cursor
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def wheelEvent(self, event) -> None:  # noqa: N802  (Qt override)
+        """Horizontal wheel / touchpad and Shift + wheel scroll the columns; a plain wheel scrolls the page."""
+        delta = event.angleDelta()
+        dx = delta.x() if abs(delta.x()) > abs(delta.y()) else 0
+        if not dx and event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+            dx = delta.y()
+        if dx:
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - dx)
+            event.accept()
+        else:
+            event.ignore()
 
     def as_text(self) -> str:
         """Headers and cells as plain text (tests, copy)."""

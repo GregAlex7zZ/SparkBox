@@ -8,7 +8,7 @@ from ..backend import Backend, ImportResult, Progress
 from ..formatting import fmt_int, fmt_time, sig4
 from ..icons import make_icon, pixmap
 from ..theme import ThemeManager, set_prop
-from .controls import StatusPill
+from .controls import FlowLayout, StatusPill, group
 from .wrap_header import install as install_wrap_header
 
 BLOCK = 256
@@ -255,8 +255,8 @@ class DatasetView(QWidget):
         lay.setContentsMargins(18, 16, 18, 12)
         lay.setSpacing(12)
         # summary row
-        s = QHBoxLayout()
-        s.setSpacing(8)
+        bar = QWidget()
+        s = FlowLayout(bar, h_spacing=8, v_spacing=8, last_right=True)   # wraps instead of cutting chips and buttons
         summary_items = (f"<b style='font-weight:500'>{fmt_int(result.n_valid)}</b> valid rows",
                          f"<b style='font-weight:500'>{fmt_int(result.n_discarded)}</b> discarded",
                          f"Duration <b style='font-weight:500'>{fmt_time(result.duration_s / 3600)} h</b>",
@@ -273,7 +273,6 @@ class DatasetView(QWidget):
         self.units_pill = StatusPill(self.theme)
         self.units_pill.hide()
         s.addWidget(self.units_pill)
-        s.addStretch(1)
         self.report_btn = QPushButton("Import Report")
         self.report_btn.setProperty("ghost", True)
         self.report_btn.setCheckable(True)
@@ -282,8 +281,6 @@ class DatasetView(QWidget):
         remap = QPushButton("Re-map Columns…")
         remap.setProperty("ghost", True)
         remap.clicked.connect(lambda: self.remapRequested.emit(self.ds_id))
-        s.addWidget(self.report_btn)
-        s.addWidget(remap)
         self.go_elab = QPushButton("Go to Data Elaboration")
         self.go_elab.setProperty("goElab", True)
         self.go_elab.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -291,8 +288,9 @@ class DatasetView(QWidget):
         self.go_elab.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.go_elab.setIconSize(QSize(14, 14))
         self.go_elab.clicked.connect(self.goElaborationRequested)
+        s.addWidget(group(self.report_btn, remap, spacing=8))
         s.addWidget(self.go_elab)
-        lay.addLayout(s)
+        lay.addWidget(bar)
         # report panel (hidden by default)
         self.report = QFrame()
         self.report.setProperty("panel", True)
@@ -364,11 +362,12 @@ class DatasetView(QWidget):
         self.table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         lay.addWidget(self.table, 1)
         # position row
-        p = QHBoxLayout()
+        foot = QWidget()
+        p = FlowLayout(foot, h_spacing=16, v_spacing=2, last_right=True)   # wraps instead of cutting the note
         self.pos = _muted("", small=True)
-        p.addWidget(self.pos, 1)
+        p.addWidget(self.pos)
         p.addWidget(_muted("4 significant digits shown, time unrounded · copy keeps full precision", small=True))
-        lay.addLayout(p)
+        lay.addWidget(foot)
         self.table.verticalScrollBar().valueChanged.connect(self._update_pos)
         theme.changed.connect(self.apply_theme)
         self.apply_theme()

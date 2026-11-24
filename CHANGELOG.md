@@ -45,8 +45,33 @@ First public version.
 - Exports of a dataset (each section and the Export window) start in the folder of its original file; the last
   export folder is used only when that folder is unknown or gone.
 - GITT / ICI Setup: Required physical inputs are highlighted in the accent colour.
+- Standby of the datasets not selected: their calculations pause until their tab is selected again (Comparison
+  lets every dataset run), and the sections not on screen load a newly selected dataset only when opened, so a
+  second large dataset no longer slows the interface down.
+- GITT / ICI IR Drop: one Sample times card, as in DCIR, whose fields show the times of the open impulse, with
+  Apply (this impulse) and Apply to All. OCV Analysis: two cards, Sampled OCV and Extrapolated OCV, each with Apply
+  (this rest) and Apply to All; Extrapolate OCV applies at once.
+- GITT / ICI Diffusion Results: markers joined by lines by default.
+- GITT / ICI IR Drop is compact enough to fit on one screen without scrolling: the values under each chart sit two
+  per line, the sample times on one line, and the charts take all the remaining height.
+- GITT / ICI Pulse Fitting: the fit values table scrolls sideways smoothly by dragging it with the pointer, with its
+  bar, with Shift + wheel or with a touchpad, and the scroll bar no longer covers the last row.
+- Help: a new User Guide section 9.7, Fit statistics, explains R², q_L, q_S, the statistical and physical
+  indicators, the Delacourt and GITT Δ checks and the OCV-extrapolation values.
+- Dataset tabs are as wide as their file name (up to 300 px).
 
 ### Fixed
+
+- Chart lag with large datasets: hovering a chart relaid out the whole window at every mouse move (now ~7 ms
+  instead of ~35 ms per move), and a wheel zoom redrew dense traces as one antialiased path (~140 ms per step;
+  now drawn as segments while the wheel turns, ~45 ms, and once more as a clean path when it rests).
+- Hover details (cycle, half-cycle, step) are read once the pointer rests, one read at a time: a sweep over the
+  full view used to queue one row-group read per mouse move and kept about one CPU core busy.
+
+- Text cut in half: the X / Y1 / Y2 selectors of Capacity, Data Explorer and Comparison now fit the chosen
+  column name, every drop-down list is as wide as its longest item, and toolbars (Data summary, chart selectors,
+  Explorer footer, GITT / ICI steps, Sample Informations) wrap onto a new line instead of squeezing their labels
+  and buttons in a narrow window; the IR Drop values keep all their wrapped lines.
 
 - DCIR Results › Export failed with every scientific result: the gregorithm adapter had no DCIR export.
 - Windows executable: the taskbar showed a generic icon on the first start of every new version.

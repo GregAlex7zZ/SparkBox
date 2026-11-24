@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Optional
 import numpy as np
 import pyqtgraph as pg
-from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen
 from PySide6.QtWidgets import (QFrame, QGraphicsItem, QGraphicsPathItem, QGridLayout, QHBoxLayout, QLabel,
                                QProgressBar, QPushButton, QVBoxLayout, QWidget)
@@ -25,6 +25,7 @@ from ..icons import pixmap
 from .flat_layer import EXPORT_DPI, FlatLayer, export_png
 
 pg.setConfigOptions(antialias=True, useOpenGL=False)      # OpenGL off by default
+WHEEL_REST_MS = 300            # fast curve drawing until the wheel has been still this long
 pg_compat.install()                                         # no QStyleHints unique-connection warning per chart
 STEP_NAMES = {0: "Rest", 1: "CC", 2: "CV", 3: "Other"}     # names of the engine Step enum; display only
 SNAP_PX = 30                                                # hover: nearest plotted real point within 30 px
@@ -170,6 +171,14 @@ class ChartWidget(QWidget):
         self._xy: list[tuple[np.ndarray, np.ndarray]] = []
         self._drag_state: Optional[dict] = None
         self._pan_pens: Optional[list] = None              # pens saved while a pan draws thinner lines
+        # Wheel zoom redraws the curves at every step. One antialiased path that doubles back on itself thousands of
+        # times (GITT and pulse traces) is Qt's slowest case: ~140 ms per frame for a 2 200-point trace. During a
+        # wheel burst the curves are drawn as separate segments (~45 ms; joints along slopes look slightly beaded
+        # when magnified), and WHEEL_REST_MS after the last step they are drawn once more as one clean path.
+        self._wheel_rest = QTimer(self)
+        self._wheel_rest.setSingleShot(True)
+        self._wheel_rest.setInterval(WHEEL_REST_MS)
+        self._wheel_rest.timeout.connect(lambda: self._fast_curves(False))
         self._axis_drag_start = None                # ranges when an axis drag started
         self._hover_row = -1
         self._labels = ("", "", None)
@@ -212,6 +221,7 @@ class ChartWidget(QWidget):
             # pixels (same antialiasing) and costs about one plot-area bitmap per curve in memory. Symbols are not
             # cached: pyqtgraph places them at sub-pixel positions that a cached image would shift by a few levels.
             c.curve.setCacheMode(QGraphicsItem.CacheMode.DeviceCoordinateCache)
+            c.curve.setSegmentedLineMode("off")             # one clean path at rest; segments only while zooming
         self.vb.addItem(self.c1)
         self.vb2.addItem(self.c2)
         self.legend = pg.LegendItem(offset=(10, 8), brush=pg.mkBrush(255, 255, 255, 235), pen=pg.mkPen(CHART["frame"]),
@@ -244,7 +254,14 @@ class ChartWidget(QWidget):
 
     # ---------------------------------------------------------------- overlays (children of this widget)
     def _build_overlays(self) -> None:
-        self.tip = QFrame(self)
+        # The hover readout sits in a layout-less, mouse-transparent host covering the chart. A text change in a
+        # child widget asks its parent's layout to recompute; with the chart as parent that request climbed to the
+        # main window and relaid out the whole application on every mouse move (~20 ms each). A parent without a
+        # layout ends the request there.
+        self.tip_host = QWidget(self)
+        self.tip_host.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.tip_host.setGeometry(self.rect())
+        self.tip = QFrame(self.tip_host)
         self.tip.setStyleSheet(f"QFrame {{ background: #FFFFFF; border: 1px solid {CHART['frame']}; border-radius: 8px; }}"
                                f"QLabel {{ border: 0; background: transparent; color: {CHART['text']}; font-family: {FONT_FAMILY};"
                                f" font-size: 9pt; }}")
@@ -490,6 +507,7 @@ class ChartWidget(QWidget):
 
     def resizeEvent(self, e) -> None:
         super().resizeEvent(e)
+        self.tip_host.setGeometry(self.rect())
         self._place_overlays()
 
     def _plot_rect(self) -> QRectF:
@@ -680,6 +698,7 @@ class ChartWidget(QWidget):
             vp = Viewport(x, y1, wheel_zoom(y2, self.vb2.mapSceneToView(scene_pos).y(), steps))
         else:
             return
+        self._fast_curves(True)
         self._apply_local(vp)
         self.viewportRequested.emit(vp)                     # the controller debounces wheel bursts
 
@@ -691,8 +710,19 @@ class ChartWidget(QWidget):
         p1, p2 = self.vb.mapSceneToView(scene_pos), self.vb2.mapSceneToView(scene_pos)
         vp = Viewport(wheel_zoom(x, p1.x(), steps), wheel_zoom(y1, p1.y(), steps),
                       wheel_zoom(y2, p2.y(), steps) if y2 is not None else None)
+        self._fast_curves(True)
         self._apply_local(vp)
         self.viewportRequested.emit(vp)                     # the controller debounces wheel bursts
+
+    def _fast_curves(self, on: bool) -> None:
+        """Segmented (fast) curve drawing while the wheel turns; the clean single path again when it rests."""
+        mode = "on" if on else "off"
+        for c in (self.c1, self.c2):
+            if c.curve.opts["segmentedLineMode"] != mode:
+                c.curve.setSegmentedLineMode(mode)
+                c.curve.update()
+        if on:
+            self._wheel_rest.start()
 
     def _axis_drag(self, orientation: str, ev) -> None:
         """Left drag on an axis pans that axis only; the content follows the pointer (drag the right axis down and
@@ -792,30 +822,46 @@ class ChartWidget(QWidget):
         return sig4(float(v))
 
     def _fill_tip(self, row: int, values: dict, keys: Optional[tuple] = None) -> None:
-        self.tip_head.setText(f"{self.row_title} {row:,}")
+        """Write the hover readout. It runs twice per new point (curve values, then the backend's details), so every
+        widget is touched only when its text, colour or visibility really changes and the tip is resized only when
+        its content size does: restyling, resizing and raising it on every mouse move made hover lag."""
+        def text(label, value: str) -> None:
+            if label.text() != value:
+                label.setText(value)
+
+        def visible(widget, on: bool) -> None:
+            if widget.isHidden() == on:
+                widget.setVisible(on)
+
+        text(self.tip_head, f"{self.row_title} {row:,}")
         labs = self._labels
         keys = keys or (None, None, None)
         colors = (CHART["tick"], *self._colors)
         for i, (a, b) in enumerate(self.tip_rows):
             show = i < 2 or labs[2] is not None
-            a.setVisible(show)
-            b.setVisible(show)
+            visible(a, show)
+            visible(b, show)
             if show:
                 name = (labs[i] or "").split(" [")[0]
                 unit = (labs[i] or "").split(" [")[1].rstrip("]") if " [" in (labs[i] or "") else ""
-                a.setText(name)
-                a.setStyleSheet(f"color: {colors[i]};")
-                b.setText(f"{self._fmt(keys[i], values.get(keys[i])) if keys[i] in values else '…'} {unit}".strip())
+                text(a, name)
+                css = f"color: {colors[i]};"
+                if a.styleSheet() != css:
+                    a.setStyleSheet(css)
+                text(b, f"{self._fmt(keys[i], values.get(keys[i])) if keys[i] in values else '…'} {unit}".strip())
         if values and self.meta_line:
             step = values.get("step")
-            self.tip_meta.setText(f"Cycle {self._fmt('cycle', values.get('cycle'))} · Half-Cycle "
-                                  f"{self._fmt('half_cycle', values.get('half_cycle'))} · Step "
-                                  f"{STEP_NAMES.get(int(step), str(step)) if step is not None else chr(8212)}")
+            text(self.tip_meta, f"Cycle {self._fmt('cycle', values.get('cycle'))} · Half-Cycle "
+                                f"{self._fmt('half_cycle', values.get('half_cycle'))} · Step "
+                                f"{STEP_NAMES.get(int(step), str(step)) if step is not None else chr(8212)}")
         else:
-            self.tip_meta.setText("")
-        self.tip.adjustSize()
-        self.tip.show()
-        self.tip.raise_()
+            text(self.tip_meta, "")
+        hint = self.tip.sizeHint()
+        if hint != self.tip.size():
+            self.tip.resize(hint)
+        if self.tip.isHidden():
+            self.tip.show()
+            self.tip_host.raise_()
 
     def _move_tip(self, scene_pt) -> None:
         p = self.pw.mapTo(self, self.pw.mapFromScene(scene_pt))

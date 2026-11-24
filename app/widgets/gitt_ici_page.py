@@ -24,6 +24,7 @@ from ..gitt_ici_ir import resistance_chart_data
 from ..gitt_ici_plot import chart_data, ocv_curves
 from ..gitt_ici_review import (ACCEPTED, MODIFIED, PENDING, accepted_sets, exclusion_text, pseudo_ocv,
                                rejected_pulses, usage)
+from .controls import FlowLayout, group
 from .gitt_ici_fit_view import FitView
 from .gitt_ici_ir_view import IrDropView
 from .gitt_ici_ocv_view import OcvView
@@ -125,22 +126,21 @@ class GittIciPage(QWidget):
         head.addWidget(self.progress)
         head.addWidget(self.cancel)
         root.addLayout(head)
-        steps = QHBoxLayout()
-        steps.setSpacing(8)
+        step_bar = QWidget()
+        steps = FlowLayout(step_bar, h_spacing=8, v_spacing=6)     # wraps instead of cutting the step names
         self.step_buttons: dict[str, QPushButton] = {}
         for i, (key, text) in enumerate(STEPS):
+            arrow = None
             if i:
                 arrow = QLabel("›")
                 arrow.setProperty("muted", True)
-                steps.addWidget(arrow)
             b = QPushButton(text)
             b.setObjectName("Step")
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.clicked.connect(lambda _c=False, k=key: self.go(k))
             self.step_buttons[key] = b
-            steps.addWidget(b)
-        steps.addStretch(1)
-        root.addLayout(steps)
+            steps.addWidget(group(arrow, b, spacing=8) if arrow is not None else b)
+        root.addWidget(step_bar)
         self.setup = SetupView(theme)
         self.ir_view = IrDropView(theme)
         self.ocv_view = OcvView(theme)

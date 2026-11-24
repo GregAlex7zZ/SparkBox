@@ -11,6 +11,7 @@ from .capacity import CapacityState, CapParams, CapResult, selectable_columns
 from .elab_controller import ElabController
 from .state import SessionState
 from .units_controller import UnitsController
+from .standby import STANDBY
 
 
 class _Sig(QObject):
@@ -129,7 +130,7 @@ class CapacityController(QObject):
 
         def job():
             try:
-                sig.finished.emit(ds_id, backend.analyze_capacity(ds_id, rid, p, lambda pr: sig.progress.emit(ds_id, pr), ev))
+                sig.finished.emit(ds_id, backend.analyze_capacity(ds_id, rid, p, STANDBY.paced(ds_id, lambda pr: sig.progress.emit(ds_id, pr), ev), ev))
             except CapacityCancelled:
                 sig.cancelled.emit(ds_id)
             except Exception as ex:                            # shown exactly as reported

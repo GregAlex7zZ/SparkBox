@@ -8,6 +8,34 @@ from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QColorDialog, QFra
                                QLineEdit, QPushButton, QScrollArea, QSizePolicy, QSplitter, QSplitterHandle, QToolButton, QVBoxLayout, QWidget)
 
 
+class WrapLabel(QLabel):
+    """Word-wrapped label that reserves the height of all its lines at its current width. A plain wrapped QLabel
+    reports a one-line minimum to layouts that ignore height-for-width (scroll panes, FillPane), so a narrow window
+    cut its lower lines. Use it for wrapped plain-text values and notes in such places; it is only as tall as its text."""
+
+    def __init__(self, text: str = "", parent=None):
+        super().__init__(text, parent)
+        self.setWordWrap(True)
+
+    def _fit(self) -> None:
+        # Measured from the text: QLabel.heightForWidth never returns less than the minimum height set here earlier, so
+        # a label that had once wrapped (narrow, or with a longer text) would keep that height for ever.
+        rect = QRect(0, 0, max(1, self.contentsRect().width()), 100_000)
+        need = self.fontMetrics().boundingRect(rect, int(Qt.TextFlag.TextWordWrap), self.text()).height()             if self.text() else 0
+        if need > 0 and need != self.minimumHeight():
+            self.setMinimumHeight(need)
+        elif not self.text() and self.minimumHeight():
+            self.setMinimumHeight(0)
+
+    def setText(self, text: str) -> None:           # noqa: N802 (Qt API)
+        super().setText(text)
+        self._fit()
+
+    def resizeEvent(self, event) -> None:           # noqa: N802 (Qt API)
+        super().resizeEvent(event)
+        self._fit()
+
+
 class ElidedLabel(QLabel):
     """Single-line label for free text (file names, counts, notes): when space is short it ends with '…' instead of
     being cut, and the complete text becomes its tooltip. Its preferred size is still the full text, so it is only
@@ -46,13 +74,30 @@ class ElidedLabel(QLabel):
 class FlowLayout(QLayout):
     """Lays its items left to right and continues on a new line when the row is full (a toolbar that wraps instead
     of squeezing its controls until their text is cut). Put controls that belong together in one QWidget so they
-    wrap as a group. Items keep their size hints; an item wider than the whole row is shrunk to the row."""
+    wrap as a group. Items keep their size hints; an item wider than the whole row is shrunk to the row.
+    With ``last_right=True`` the last item is pushed to the right edge of its line (chart tools, a toolbar's main
+    action), like a stretch before it in a QHBoxLayout; with ``centered=True`` every line is centred instead.
+    Heights per width, size hints and the applied geometry are cached until Qt invalidates the layout (a child's
+    size or visibility changed): Qt asks for them many times per layout pass, and recomputing them in Python on
+    every query made chart hover and zoom lag."""
 
-    def __init__(self, parent=None, h_spacing: int = 8, v_spacing: int = 6):
+    def __init__(self, parent=None, h_spacing: int = 8, v_spacing: int = 6, last_right: bool = False,
+                 centered: bool = False):
         super().__init__(parent)
         self._items: list = []
         self._h, self._v = h_spacing, v_spacing
+        self._last_right = last_right
+        self._centered = centered
+        self._hfw: dict[int, int] = {}                  # width -> height, valid until invalidate()
+        self._hints: tuple | None = None             # (sizeHint, minimumSize)
+        self._applied: QRect | None = None           # geometry last laid out
         self.setContentsMargins(0, 0, 0, 0)
+
+    def invalidate(self) -> None:
+        self._hfw.clear()
+        self._hints = None
+        self._applied = None
+        super().invalidate()
 
     def addItem(self, item) -> None:
         self._items.append(item)
@@ -73,24 +118,35 @@ class FlowLayout(QLayout):
         return True
 
     def heightForWidth(self, width: int) -> int:
-        return self._layout(QRect(0, 0, width, 0), apply=False)
+        if width not in self._hfw:
+            self._hfw[width] = self._layout(QRect(0, 0, width, 0), apply=False)
+        return self._hfw[width]
 
     def setGeometry(self, rect: QRect) -> None:
         super().setGeometry(rect)
+        if self._applied is not None and self._applied == rect:
+            return                                      # same place, nothing invalidated: items are already there
+        self._applied = QRect(rect)
         self._layout(rect, apply=True)
 
+    def _sizes(self) -> tuple:
+        if self._hints is None:
+            visible = self._visible()
+            m = self.contentsMargins()
+            margins = QSize(m.left() + m.right(), m.top() + m.bottom())
+            w = sum(it.sizeHint().width() for it in visible) + self._h * max(0, len(visible) - 1)
+            h = max((it.sizeHint().height() for it in visible), default=0)
+            minimum = QSize()
+            for it in visible:
+                minimum = minimum.expandedTo(it.minimumSize())
+            self._hints = (QSize(w, h) + margins, minimum + margins)
+        return self._hints
+
     def sizeHint(self) -> QSize:
-        w = sum(it.sizeHint().width() for it in self._visible()) + self._h * max(0, len(self._visible()) - 1)
-        h = max((it.sizeHint().height() for it in self._visible()), default=0)
-        m = self.contentsMargins()
-        return QSize(w + m.left() + m.right(), h + m.top() + m.bottom())
+        return QSize(self._sizes()[0])
 
     def minimumSize(self) -> QSize:
-        s = QSize()
-        for it in self._visible():
-            s = s.expandedTo(it.minimumSize())
-        m = self.contentsMargins()
-        return s + QSize(m.left() + m.right(), m.top() + m.bottom())
+        return QSize(self._sizes()[1])
 
     def _visible(self) -> list:
         return [it for it in self._items if not (it.widget() is not None and it.widget().isHidden())]
@@ -100,14 +156,22 @@ class FlowLayout(QLayout):
         r = rect.adjusted(m.left(), m.top(), -m.right(), -m.bottom())
         x, y, line_h = r.x(), r.y(), 0
         row: list = []
+        visible = self._visible()
 
         def flush():
+            shift = 0
+            if self._centered and row:
+                used = row[-1][1] + row[-1][2] - row[0][1]
+                shift = max(0, (r.width() - used) // 2)
             for it, ix, w in row:
+                ix += shift
                 hint = it.sizeHint()
+                if self._last_right and it is visible[-1]:
+                    ix = max(ix, r.right() + 1 - w)
                 if apply:
                     it.setGeometry(QRect(ix, y + (line_h - hint.height()) // 2, w, hint.height()))
 
-        for it in self._visible():
+        for it in visible:
             hint = it.sizeHint()
             w = min(hint.width(), r.width())
             if row and x + w > r.right() + 1:
@@ -466,9 +530,8 @@ class SampleBlock(QWidget):
             head.addWidget(InfoButton(theme, "Sample values", SAMPLE_POPOVER))
             head.addStretch(1)
             v.addLayout(head)
-            row = QHBoxLayout()
-            row.setSpacing(8)
-            row.addStretch(1)
+            row_box = QWidget()
+            row = FlowLayout(row_box, h_spacing=18, v_spacing=6, centered=True)   # wraps instead of cutting labels
         for i, (key, label, unit) in enumerate(SAMPLE_FIELDS):
             f = QLineEdit()
             f.setPlaceholderText("Optional")
@@ -496,14 +559,9 @@ class SampleBlock(QWidget):
                 lab.setProperty("muted", True)
                 lab.setStyleSheet("font-size: 9pt;")
                 f.setFixedWidth(96)
-                if i:
-                    row.addSpacing(10)
-                row.addWidget(lab)
-                row.addWidget(f)
-                row.addWidget(u)
+                row.addWidget(group(lab, f, u, spacing=8))
         if not docked:
-            row.addStretch(1)
-            v.addLayout(row)
+            v.addWidget(row_box)
         self.err = QLabel()
         self.err.setProperty("hintErr", True)
         self.err.setAlignment(Qt.AlignmentFlag.AlignLeft if docked else Qt.AlignmentFlag.AlignHCenter)

@@ -13,6 +13,7 @@ from .dcir_controller import DcirController, _err
 from .elab_controller import ElabController
 from .state import SessionState
 from .units_controller import UnitsController
+from .standby import STANDBY
 
 
 class _Sig(QObject):
@@ -173,7 +174,7 @@ class CorrectionController(QObject):
         def job():
             try:
                 sig.finished.emit(ds_id, rid, backend.recalculate_cycles(ds_id, rid, pid, p,
-                                                                         lambda pr: sig.progress.emit(ds_id, pr), ev,
+                                                                         STANDBY.paced(ds_id, lambda pr: sig.progress.emit(ds_id, pr), ev), ev,
                                                                          dqdv_rid))
             except CorrectionCancelled:
                 sig.cancelled.emit(ds_id)

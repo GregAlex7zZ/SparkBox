@@ -66,7 +66,9 @@ def test_ocv_area_lists_every_rest_and_keeps_sampled_and_extrapolated_apart(app,
     assert [r.sampled.voltage_v for r in rests[1:]] == pytest.approx([3.51, 3.52, 3.53], rel=1e-12, abs=0)
     assert all(r.extrapolated is None and r.extrapolated_reason == "not_requested" for r in rests)
     assert not view.extrapolate.isChecked() and view.chart.marks == {"sampled": rests[0].sampled.source_row}
-    view.extrapolate.setChecked(True)
+    view.extrapolate.setChecked(True)                                                      # applies at once
+    _wait(app, lambda: not model.is_running)
+    app.processEvents()
     view.global_target.setText("600")
     view.apply_settings.click()                                                            # all rests at once
     _wait(app, lambda: not model.is_running)
@@ -342,8 +344,8 @@ def test_every_setup_control_has_an_explanation(app) -> None:
     for key in ("protocol", "scope", "methods", "gitt_va", "gitt_delta", "ici", "delacourt_fixed", "ocv_methods",
                 "rest_sample", "ici_intercept", "relaxation_extrapolated", "active_volume", "effective_area",
                 "particle_radius", "auto", "window_mode", "guidance", "coefficient", "ir_mode", "ir_time",
-                "ir_post_time", "thresholds", "proceed", "ir_drop", "ir_times", "ir_local", "ir_accept",
-                "ocv_sampled", "ocv_extrapolation", "ocv_local",
+                "ir_post_time", "thresholds", "proceed", "ir_drop", "ir_times", "ir_accept",
+                "ocv_sampled", "ocv_extrapolation",
                 "ocv_accept", "fit_window", "fit_accept", "results_x", "results_y"):
         assert f"About {INFO[key][0]}" in titles, key
     assert "0.0032" in " ".join(INFO["coefficient"][1])
@@ -646,7 +648,7 @@ def test_sample_time_can_be_changed_for_one_impulse_only(app, pipeline) -> None:
     first, second = model.events[0].event_id, model.events[1].event_id
     others = {r.identity: r for r in model.records if r.identity.event_id != first}
     pre = page.ir_view.charts["pre_pulse"]
-    page.ir_view.local_pre.setText("4")
+    page.ir_view.pre_time.setText("4")
     page.ir_view.local_apply.click()
     _wait(app, lambda: not model.is_running)
     drops = ctl.ir_drops("d")
@@ -839,15 +841,15 @@ def test_results_chart_style_and_colours_are_edited_in_the_dock(app, pipeline) -
     dock = GittIciSettingsDock(page.theme, page.setup.advanced_panel, page.results)
     page.go("results")
     results = page.results
-    assert results.plot_style == "markers" and dock.style.value() == "markers"
+    assert results.plot_style == "lines_markers" and dock.style.value() == "lines_markers"   # default: both
     drawn = len(results.visible_points("d"))
     assert drawn
 
     def items(kind):
         return [i for i in results.pi.items if isinstance(i, kind)]
-    assert not items(pg.PlotDataItem)
-    dock.style._btn["lines_markers"].click()
-    assert results.plot_style == "lines_markers" and items(pg.PlotDataItem)
+    assert items(pg.PlotDataItem)
+    dock.style._btn["markers"].click()
+    assert results.plot_style == "markers" and not items(pg.PlotDataItem)
     dock.style._btn["lines"].click()
     assert len(results.visible_points("d")) == drawn                                        # still clickable
     dock.size._btn["12"].click()
@@ -913,17 +915,18 @@ def test_one_impulse_can_use_different_pre_and_post_pulse_times(app, pipeline) -
     page.go("ir")
     view = page.ir_view
     first, second = model.events[0].event_id, model.events[1].event_id
-    assert view.local_pre.text() == "" and view.local_pre.placeholderText() == "global 1"
-    view.local_pre.setText("4")
-    view.local_post.setText("7")
+    assert view.pre_time.text() == "1" and view.times_scope.text() == "· all impulses"       # one card, as DCIR
+    view.pre_time.setText("4")
+    view.post_time.setText("7")
     view.local_apply.click()
     _wait(app, lambda: not model.is_running)
     drops = ctl.ir_drops("d")
     assert drops[first].pre_pulse.measured.relative_time_s == 4.0 and drops[first].pre_pulse.local_time
     assert drops[first].post_pulse.measured.relative_time_s == 7.0 and drops[first].post_pulse.local_time
     assert drops[second].pre_pulse.target_time_s == drops[second].post_pulse.target_time_s == 1.0
-    assert view.local_pre.text() == "4" and view.local_post.text() == "7"
-    view.local_post.setText("")                                                             # post back to global
+    assert view.pre_time.text() == "4" and view.post_time.text() == "7"
+    assert view.times_scope.text() == "· this impulse" and not view.local_reset.isHidden()
+    view.post_time.setText("")                                                             # post back to global
     view.local_apply.click()
     _wait(app, lambda: not model.is_running)
     drops = ctl.ir_drops("d")
@@ -978,7 +981,7 @@ def test_sampled_ocv_time_can_be_set_for_all_rests_or_one_rest(app, pipeline) ->
     second = ctl.rest_ocv("d")[1].rest_segment_id
     va = _record(model, VA)
     view.sample_time.setText("30")                                                         # every rest
-    view.apply_settings.click()
+    view.sample_apply_all.click()
     _wait(app, lambda: not model.is_running)
     rests = ctl.rest_ocv("d")
     at = lambda ocv, t: ocv + 0.003 * math.sqrt(60) - 0.003 * math.sqrt(t)                 # noqa: E731
@@ -987,7 +990,7 @@ def test_sampled_ocv_time_can_be_set_for_all_rests_or_one_rest(app, pipeline) ->
     assert _record(model, VA) is not va                                                    # D follows the new OCV
     page._open_rest(second)
     assert "t ≤ 30 s (all rests)" in view.sampled_text.text()
-    view.local_time.setText("10")                                                          # this rest only
+    view.sample_time.setText("10")                                                          # this rest only
     view.time_apply.click()
     _wait(app, lambda: not model.is_running)
     rests = ctl.rest_ocv("d")
@@ -998,7 +1001,7 @@ def test_sampled_ocv_time_can_be_set_for_all_rests_or_one_rest(app, pipeline) ->
     _wait(app, lambda: not model.is_running)
     assert model.ocv_samples == {}
     view.sample_time.setText("")                                                           # last sample again
-    view.apply_settings.click()
+    view.sample_apply_all.click()
     _wait(app, lambda: not model.is_running)
     assert model.applied.ocv_sample_time_s is None
     assert ctl.rest_ocv("d")[1].sampled.voltage_v == pytest.approx(3.51, rel=1e-12, abs=0)
@@ -1013,10 +1016,10 @@ def test_extrapolation_of_one_rest_does_not_change_the_others(app, pipeline) -> 
     before = ctl.rest_ocv("d")
     second = before[1].rest_segment_id
     page._open_rest(second)
-    assert view.local_fit.text() == "" and view.local_fit.placeholderText().startswith("global ")
+    assert view.extrap_scope.text() == "· all rests" and view.local_reset.isHidden()
     others = {r.identity: r for r in model.records}
-    view.local_target.setText("900")
-    view.local_fit.setText("0.5")
+    view.global_target.setText("900")
+    view.fit_start.setText("0.5")
     view.local_apply.click()
     _wait(app, lambda: not model.is_running)
     after = ctl.rest_ocv("d")

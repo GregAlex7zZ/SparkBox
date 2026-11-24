@@ -2,10 +2,14 @@
 Mapping menu, like a browser's new-tab button) and the fixed Advanced Settings button."""
 from __future__ import annotations
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, Signal
+from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QPushButton, QScrollArea, QToolButton, QWidget)
 from ..icons import make_icon
 from ..theme import ThemeManager, repolish
 from ..tokens import BAND_H, TAB_H, TAB_PITCH, TAB_W
+
+TAB_MAX_W = 300            # widest dataset tab; longer names are elided
+TAB_CHROME = 12 + 15 + 6 + 24 + 4   # margins, spacing and close button around the name
 
 
 class TabBox(QFrame):
@@ -16,7 +20,6 @@ class TabBox(QFrame):
         super().__init__()
         self.ds_id, self.name, self.theme, self._active = ds_id, name, theme, False
         self.setObjectName("TabBox")
-        self.setFixedSize(TAB_W, TAB_H)
         lay = QHBoxLayout(self)
         lay.setContentsMargins(12, 0, 15, 0)
         lay.setSpacing(6)
@@ -26,7 +29,14 @@ class TabBox(QFrame):
         self.label.setCursor(Qt.CursorShape.PointingHandCursor)
         self.label.setToolTip(name)
         self.label.setAccessibleName(f"Dataset {name}")
-        self.label.setText(self.label.fontMetrics().elidedText(name, Qt.TextElideMode.ElideRight, 100))
+        # Wide enough for the whole file name (measured at the active tab's weight 500), between TAB_W and TAB_MAX_W;
+        # only a longer name ends with "…" (full name in the tooltip).
+        self.label.ensurePolished()
+        font = QFont(self.label.font())
+        font.setWeight(QFont.Weight.Medium)
+        text_w = QFontMetrics(font).horizontalAdvance(name) + 4
+        self.setFixedSize(max(TAB_W, min(TAB_MAX_W, text_w + TAB_CHROME)), TAB_H)
+        self.label.setText(QFontMetrics(font).elidedText(name, Qt.TextElideMode.ElideRight, self.width() - TAB_CHROME))
         self.label.clicked.connect(lambda: self.selected.emit(self.ds_id))
         self.close_btn = QToolButton()
         self.close_btn.setObjectName("TabClose")

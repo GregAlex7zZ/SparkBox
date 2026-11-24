@@ -14,7 +14,8 @@ from ..formatting import fmt_int
 from ..icons import make_icon, pixmap
 from ..theme import ThemeManager
 from .chart import ChartWidget
-from .controls import InfoButton, StatusPill
+from .combos import FitComboBox
+from .controls import ElidedLabel, FlowLayout, InfoButton, StatusPill, group
 
 COUNTER_INFO = (
     "Rendered / Total counts distinct real rows inside the visible X range and the applied cycle filter.",
@@ -22,7 +23,7 @@ COUNTER_INFO = (
     "Rows with no value for any active Y series cannot be drawn and are excluded.",
     "Render All Points draws every eligible row as a flat image (100%).",
 )
-SEL_W = 160
+SEL_W = 120                     # narrowest X / Y selector; it grows with the chosen name
 
 
 def _swatch(color: Optional[str]) -> QIcon:
@@ -49,12 +50,12 @@ class ExplorerPage(QWidget):
         root.setContentsMargins(18, 14, 18, 12)
         root.setSpacing(10)
         root.addLayout(self._header())
-        root.addLayout(self._selectors())
+        root.addWidget(self._selectors())
         self.banner = self._banner()
         root.addWidget(self.banner)
         self.chart = ChartWidget()
         root.addWidget(self.chart, 1)
-        root.addLayout(self._footer())
+        root.addWidget(self._footer())
         self.chart.viewportRequested.connect(lambda vp: self._edit(lambda e: e.set_viewport(vp), debounce=True))
         self.chart.plotResized.connect(ctl.set_plot_size)
         self.chart.hoverRow.connect(lambda row: ctl.request_details(self.ds_id, row) if self.ds_id else None)
@@ -75,7 +76,7 @@ class ExplorerPage(QWidget):
         h.setSpacing(12)
         t = QLabel("Data Explorer")
         t.setStyleSheet("font-size: 12pt; font-weight: 500;")
-        self.meta = QLabel()
+        self.meta = ElidedLabel()                     # ends with "…" (full text as tooltip) when short of room
         self.meta.setProperty("muted", True)
         self.meta.setStyleSheet("font-size: 9pt;")
         self.units_pill = StatusPill(self.theme)
@@ -87,30 +88,24 @@ class ExplorerPage(QWidget):
         h.addWidget(self.result_pill)
         return h
 
-    def _selectors(self) -> QHBoxLayout:
-        h = QHBoxLayout()
-        h.setSpacing(14)
+    def _selectors(self) -> QWidget:
+        """X / Y1 / Y2 selectors and the chart tools; the row wraps instead of cutting a column name."""
+        bar = QWidget()
+        h = FlowLayout(bar, h_spacing=14, v_spacing=6, last_right=True)
         self.combos: dict[str, QComboBox] = {}
         for axis, label in (("x", "X"), ("y1", "Y1"), ("y2", "Y2")):
-            g = QHBoxLayout()
-            g.setSpacing(6)
             l = QLabel(label)
             l.setFixedWidth(18)
             l.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             l.setStyleSheet("font-size: 9pt; font-weight: 500;")
             l.setProperty("muted", True)
-            c = QComboBox()
-            c.setFixedWidth(SEL_W)
+            c = FitComboBox(min_width=SEL_W)      # always as wide as the chosen column name
             c.setAccessibleName(f"{label} axis")
             c.setIconSize(QSize(14, 6))
-            c.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
             c.activated.connect(lambda i, a=axis, cb=c: self._edit(lambda e: e.set_axis(a, cb.itemData(i))))
             l.setBuddy(c)
-            g.addWidget(l)
-            g.addWidget(c)
-            h.addLayout(g)
+            h.addWidget(group(l, c, spacing=6))
             self.combos[axis] = c
-        h.addStretch(1)
         tools = QFrame()
         tools.setObjectName("Segmented")
         tl = QHBoxLayout(tools)
@@ -150,7 +145,7 @@ class ExplorerPage(QWidget):
         self.t_reset.clicked.connect(lambda: self._edit(lambda e: e.reset_view()))
         self.t_save.clicked.connect(self._save)
         h.addWidget(tools)
-        return h
+        return bar
 
     def _banner(self) -> QFrame:
         f = QFrame()
@@ -181,9 +176,10 @@ class ExplorerPage(QWidget):
         f.hide()
         return f
 
-    def _footer(self) -> QHBoxLayout:
-        h = QHBoxLayout()
-        h.setSpacing(8)
+    def _footer(self) -> QWidget:
+        """Point counter, gesture hint and Render All Points; wraps instead of cutting them in a narrow window."""
+        bar = QWidget()
+        h = FlowLayout(bar, h_spacing=12, v_spacing=4, last_right=True)
         cap = QLabel("Rendered / Total")
         cap.setProperty("muted", True)
         cap.setStyleSheet("font-size: 9pt;")
@@ -201,12 +197,9 @@ class ExplorerPage(QWidget):
         self.render_btn.setIconSize(QSize(16, 16))
         self.render_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.render_btn.clicked.connect(self._toggle_render)
-        for w in (cap, self.counter, self.counter_info):
-            h.addWidget(w)
-        h.addStretch(1)
-        h.addWidget(hint)
-        h.addWidget(self.render_btn)
-        return h
+        h.addWidget(group(cap, self.counter, self.counter_info, spacing=8))
+        h.addWidget(group(hint, self.render_btn, spacing=8))
+        return bar
 
     def _icons(self) -> None:
         t = self.theme.tokens

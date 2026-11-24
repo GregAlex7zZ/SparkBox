@@ -449,7 +449,7 @@ class DcirPage(QWidget):
         right = QVBoxLayout()
         right.setSpacing(6)
         bar = QHBoxLayout()
-        self.ev_title = _lab(weight=500, size=14)
+        self.ev_title = _lab(weight=500, size=14, cls=ElidedLabel)   # "…" + tooltip, never a hard cut
         self.ev_sub = _lab(muted=True, size=12, cls=ElidedLabel)
         bar.addWidget(self.ev_title)
         bar.addWidget(self.ev_sub)
